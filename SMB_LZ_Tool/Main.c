@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -23,6 +27,8 @@ int main(int argc, char* argv[]) {
 			printf("ERROR: File not found: %s\n", argv[i]);
 			continue;
 		}
+		printf("Decompressing %s\n", argv[i]);
+
 		// Create a temp file for the unfixed lz (SMB lz has a slightly different header than FF7 LZS)
 		FILE* normal = tmpfile();
 
@@ -41,7 +47,7 @@ int main(int argc, char* argv[]) {
 			putc(c, normal);
 		}
 		fclose(lz);
-
+		fflush(normal);
 		fseek(normal, 0, SEEK_SET);
 
 		// Make the output file name
@@ -63,8 +69,17 @@ int main(int argc, char* argv[]) {
 		// The size the the lzss data + 4 bytes for the header
 		uint32_t filesize = READINT(normal) + 4;
 
+		int lastPercentDone = -1;
+
 		// Loop until we reach the end of the data or end of the file
 		while ((unsigned) ftell(normal) < filesize && !feof(normal)) {
+
+			float percentDone = (100.0f * ftell(normal)) / filesize;
+			int intPercentDone = (int)percentDone;
+			if (intPercentDone % 10 == 0 && intPercentDone != lastPercentDone) {
+				printf("%d%% Completed\n", intPercentDone);
+				lastPercentDone = intPercentDone;
+			}
 
 			// Read the first control block
 			// Read right to left, each bit specifies how the the next 8 spots of data will be
@@ -134,5 +149,8 @@ int main(int argc, char* argv[]) {
 		fclose(outfileR);
 		fclose(outfile);
 		fclose(normal);
+
+		printf("Finished Decompressing %s\n", argv[i]);
 	}
+	return 0;
 }
