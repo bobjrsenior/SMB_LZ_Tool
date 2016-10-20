@@ -8,7 +8,15 @@
 
 #define READINT(x) ((getc(x)) + (getc(x) << 8) + (getc(x) << 16) + (getc(x) << 24))
 
-uint16_t readShort(FILE* file) {
+inline uint32_t readInt(FILE* file) {
+	uint32_t c1 = getc(file);
+	uint32_t c2 = getc(file) << 8;
+	uint32_t c3 = getc(file) << 16;
+	uint32_t c4 = getc(file) << 24;
+	return (c1 | c2 | c3 | c4);
+}
+
+inline uint16_t readShort(FILE* file) {
 	char rotStr[3];
 	fscanf(file, "%c%c", (rotStr + 1), (rotStr + 0));
 	return *((uint16_t*)rotStr);
@@ -33,17 +41,14 @@ int main(int argc, char* argv[]) {
 		FILE* normal = tmpfile();
 
 		// Unfix the header (Turn it back into normal FF7 LZSS)
-		int csize = getc(lz) + (getc(lz) << 8) + (getc(lz) << 16) + (getc(lz) << 24) - 8;
+		uint32_t csize = readInt(lz) - 8;
 		fseek(lz, 4, SEEK_CUR);
 		putc(csize & 0xFF, normal);
 		putc((csize >> 8) & 0xFF, normal);
 		putc((csize >> 16) & 0xFF, normal);
 		putc((csize >> 24) & 0xFF, normal);
-		int lastPos = ftell(normal);
-		for (int i = 0; i<(csize); i++) {
-			char c = getc(lz);
-			lastPos = ftell(lz);
-			int pos = ftell(lz);
+		for (int j = 0; j < (int) (csize); j++) {
+			char c = (char) getc(lz);
 			putc(c, normal);
 		}
 		fclose(lz);
@@ -53,12 +58,14 @@ int main(int argc, char* argv[]) {
 		// Make the output file name
 		char outfileName[512];
 		sscanf(argv[i], "%507s", outfileName);
-		int length = strlen(outfileName);
-		outfileName[length++] = '.';
-		outfileName[length++] = 'r';
-		outfileName[length++] = 'a';
-		outfileName[length++] = 'w';
-		outfileName[length++] = '\0';
+		{
+			int nameLength = (int) strlen(outfileName);
+			outfileName[nameLength++] = '.';
+			outfileName[nameLength++] = 'r';
+			outfileName[nameLength++] = 'a';
+			outfileName[nameLength++] = 'w';
+			outfileName[nameLength++] = '\0';
+		}
 
 		// Open the output file for both reading and writing separately
 		// This is because you read bytes from the output buffer to write to the end and prevents constant fseeking
@@ -67,8 +74,8 @@ int main(int argc, char* argv[]) {
 
 
 		// The size the the lzss data + 4 bytes for the header
-		uint32_t filesize = READINT(normal) + 4;
-
+		uint32_t filesize = readInt(normal) + 4;
+		printf("FILESIZE: %d\n", filesize);
 		int lastPercentDone = -1;
 
 		// Loop until we reach the end of the data or end of the file
@@ -85,7 +92,7 @@ int main(int argc, char* argv[]) {
 			// Read right to left, each bit specifies how the the next 8 spots of data will be
 			// 0 means write the byte directly to the output
 			// 1 represents there will be reference (2 byte)
-			uint8_t block = getc(normal);
+			uint8_t block = (uint8_t) getc(normal);
 
 			// Go through every bit in the control block
 			for (int j = 0; j < 8 && (unsigned)ftell(normal) < filesize && !feof(normal); ++j) {
