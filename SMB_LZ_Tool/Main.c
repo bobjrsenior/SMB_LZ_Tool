@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#define READINT(x) ((getc(x)) + (getc(x) << 8) + (getc(x) << 16) + (getc(x) << 24))
-
 inline uint32_t readInt(FILE* file) {
 	uint32_t c1 = getc(file);
 	uint32_t c2 = getc(file) << 8;
