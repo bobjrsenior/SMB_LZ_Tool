@@ -9,7 +9,7 @@ Only decompression is currently supported
 Just drag the file to decompress on the executable.
 ### Command Line
 
-     SMB_LZ_Tool.exe [FILE...]
+     ./SMB_LZ_Tool [FILE...]
      
 ## SMB FF7 LZSS Specification
 The SMB FF7 LZSS format is the same as the FF7 LZSS format, but with a slightly different header.
