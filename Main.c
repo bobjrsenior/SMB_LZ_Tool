@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-inline uint32_t readInt(FILE* file) {
+uint32_t readInt(FILE* file) {
 	uint32_t c1 = getc(file);
 	uint32_t c2 = getc(file) << 8;
 	uint32_t c3 = getc(file) << 16;
@@ -14,7 +14,7 @@ inline uint32_t readInt(FILE* file) {
 	return (c1 | c2 | c3 | c4);
 }
 
-inline uint16_t readShort(FILE* file) {
+uint16_t readShort(FILE* file) {
 	char rotStr[3];
 	fscanf(file, "%c%c", (rotStr + 1), (rotStr + 0));
 	return *((uint16_t*)rotStr);

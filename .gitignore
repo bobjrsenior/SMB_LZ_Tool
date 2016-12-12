@@ -266,3 +266,12 @@ __pycache__/
 
 # Cake - Uncomment if you are using it
 # tools/
+
+# Mac
+.DS_Store
+
+# CMake / Make
+CMakeFiles
+CMakeCache.txt
+Makefile
+SMB_LZ_Tool
