@@ -156,17 +156,21 @@ void decompress(char* filename) {
 					++readLocation;
 				}
 
-				// Flush the file so we don't read something that hasn't been properly updated
-				fflush(outfile);
+				// Flush the file if data needs to be read from the outfile
+				if (length > 0) {
+					fflush(outfile);
+				}
 
 				// Seek to the reference position
 				fseek(outfileR, readLocation, SEEK_SET);
+
+				// Get the number of bytes until the current end of file (will need to flush once that is reached)
 				int buffer = ftell(outfile) - readLocation;
 				int curBuffer = 0;
 				// Read the reference bytes until we reach length bytes written
 				while (length > 0) {
 
-					
+					// If at the previous end of file, flush the new data
 					if (curBuffer == buffer) {
 						// Flush the file so we don't read something that hasn't been properly updated
 						fflush(outfile);
