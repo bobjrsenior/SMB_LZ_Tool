@@ -161,13 +161,20 @@ void decompress(char* filename) {
 
 				// Seek to the reference position
 				fseek(outfileR, readLocation, SEEK_SET);
-
+				int buffer = ftell(outfile) - readLocation;
+				int curBuffer = 0;
 				// Read the reference bytes until we reach length bytes written
 				while (length > 0) {
 
+					
+					if (curBuffer == buffer) {
+						// Flush the file so we don't read something that hasn't been properly updated
+						fflush(outfile);
+
+						curBuffer = 0;
+					}
 					putc(getc(outfileR), outfile);
-					// Flush the file so we don't read something that hasn't been properly updated
-					fflush(outfile);
+					++curBuffer;
 					--length;
 				}
 
