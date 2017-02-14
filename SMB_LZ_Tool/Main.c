@@ -16,9 +16,9 @@ inline uint32_t readInt(FILE* file) {
 }
 
 inline uint16_t readShort(FILE* file) {
-	char rotStr[3];
-	fscanf(file, "%c%c", (rotStr + 1), (rotStr + 0));
-	return *((uint16_t*)rotStr);
+	uint32_t c1 = getc(file) << 8;
+	uint32_t c2 = getc(file);
+	return (uint32_t) (c1 | c2);
 }
 
 void decompress(char* filename);
