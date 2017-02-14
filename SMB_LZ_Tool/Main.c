@@ -3,6 +3,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -70,7 +71,8 @@ void decompress(char* filename) {
 
 	// Unfix the header (Turn it back into normal FF7 LZSS)
 	uint32_t csize = readInt(lz) - 8;
-	fseek(lz, 4, SEEK_CUR);
+	// Filesize of the uncompressed data
+	int dataSize = readInt(lz);
 	putc(csize & 0xFF, normal);
 	putc((csize >> 8) & 0xFF, normal);
 	putc((csize >> 16) & 0xFF, normal);
@@ -95,26 +97,14 @@ void decompress(char* filename) {
 		outfileName[nameLength++] = '\0';
 	}
 
-	// Open the output file for both reading and writing separately
-	// This is because you read bytes from the output buffer to write to the end and prevents constant fseeking
-	FILE* outfile = fopen(outfileName, "wb");
-	FILE* outfileR = fopen(outfileName, "rb");
-
-
 	// The size the the lzss data + 4 bytes for the header
 	uint32_t filesize = readInt(normal) + 4;
-	printf("FILESIZE: %d\n", filesize);
-	int lastPercentDone = -1;
+
+	char * memBlock = (char*)malloc(sizeof(char) * (dataSize));
+	int memPosition = 0;
 
 	// Loop until we reach the end of the data or end of the file
 	while ((unsigned)ftell(normal) < filesize && !feof(normal)) {
-
-		float percentDone = (100.0f * ftell(normal)) / filesize;
-		int intPercentDone = (int)percentDone;
-		if (intPercentDone % 10 == 0 && intPercentDone != lastPercentDone) {
-			printf("%d%% Completed\n", intPercentDone);
-			lastPercentDone = intPercentDone;
-		}
 
 		// Read the first control block
 		// Read right to left, each bit specifies how the the next 8 spots of data will be
@@ -124,9 +114,10 @@ void decompress(char* filename) {
 
 		// Go through every bit in the control block
 		for (int j = 0; j < 8 && (unsigned)ftell(normal) < filesize && !feof(normal); ++j) {
-			// Literal
+			// Literal byte copy
 			if (block & 0x01) {
-				putc(getc(normal), outfile);
+				memBlock[memPosition] = (char) getc(normal);
+				++memPosition;
 			}// Reference
 			else {
 				uint16_t reference = readShort(normal);
@@ -143,45 +134,30 @@ void decompress(char* filename) {
 				int offset = ((reference & 0xFF00) >> 8) | ((reference & 0x00F0) << 4);
 
 				// Convert the offset to how many bytes away from the end of the buffer to start reading from
-				int backSet = ((ftell(outfile) - 18 - offset) & 0xFFF);
+				int backSet = (memPosition - 18 - offset) & 0xFFF;
 
 				// Calculate the actual location in the file
-				int readLocation = ftell(outfile) - backSet;
+				int readLocation = memPosition - backSet;
 
 				// Handle case where the offset is past the beginning of the file
-				while (readLocation < 0 && length > 0) {
-					putc(0, outfile);
-
-					--length;
-					++readLocation;
-				}
-
-				// Flush the file if data needs to be read from the outfile
-				if (length > 0) {
-					fflush(outfile);
-				}
-
-				// Seek to the reference position
-				fseek(outfileR, readLocation, SEEK_SET);
-
-				// Get the number of bytes until the current end of file (will need to flush once that is reached)
-				int buffer = ftell(outfile) - readLocation;
-				int curBuffer = 0;
-				// Read the reference bytes until we reach length bytes written
-				while (length > 0) {
-
-					// If at the previous end of file, flush the new data
-					if (curBuffer == buffer) {
-						// Flush the file so we don't read something that hasn't been properly updated
-						fflush(outfile);
-
-						curBuffer = 0;
+				if (readLocation < 0) {
+					// Determine how many zeros to write
+					int amt = -readLocation;
+					if (length <= amt) {
+						amt = length;
 					}
-					putc(getc(outfileR), outfile);
-					++curBuffer;
-					--length;
+					// Write the zeros
+					memset(&memBlock[memPosition], 0, sizeof(char) * amt);
+					// Ajuest positions and number of bytes left to copy
+					length -= amt;
+					readLocation += amt;
+					memPosition += amt;
 				}
 
+				// Copy the rest of the reference bytes
+				while (length-- > 0) {
+					memBlock[memPosition++] = memBlock[readLocation++];
+				}
 
 
 			}
@@ -192,7 +168,12 @@ void decompress(char* filename) {
 
 	}
 
-	fclose(outfileR);
+	// Open the output file and copy the data into it
+	FILE* outfile = fopen(outfileName, "wb");
+	fwrite(memBlock, sizeof(char), dataSize, outfile);
+
+	// Close files and free memory
+	free(memBlock);
 	fclose(outfile);
 	fclose(normal);
 
