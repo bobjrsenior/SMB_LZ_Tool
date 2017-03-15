@@ -18,10 +18,37 @@ inline uint32_t readInt(FILE* file) {
 inline uint16_t readShort(FILE* file) {
 	uint32_t c1 = getc(file) << 8;
 	uint32_t c2 = getc(file);
-	return (uint32_t) (c1 | c2);
+	return (uint16_t)(c1 | c2);
 }
 
+inline uint32_t readIntData(char* data, int offset) {
+	return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) + (data[offset + 3]);
+}
+
+inline void writeIntLittleData(char* data, int offset, uint32_t num) {
+	data[offset] = (char)(num);
+	data[offset + 1] = (char)(num >> 8);
+	data[offset + 2] = (char)(num >> 16);
+	data[offset + 3] = (char)(num >> 24);
+}
+
+inline void writeLittleInt(FILE* file, uint32_t num) {
+	putc(num, file);
+	putc(num >> 8, file);
+	putc(num >> 16, file);
+	putc(num >> 24, file);
+}
+
+typedef struct {
+	uint32_t length;
+	int offset;
+}ReferenceBlock;
+
 void decompress(char* filename);
+
+void compress(char* filename);
+
+ReferenceBlock findMaxReference(char* fileData, int filesize, int maxOffset);
 
 int main(int argc, char* argv[]) {
 	if (argc <= 1) {
@@ -30,23 +57,23 @@ int main(int argc, char* argv[]) {
 
 	// Go through every command line arg
 	for (int i = 1; i < argc; ++i) {
-		int strLen = (int) strlen(argv[i]);
+		int strLen = (int)strlen(argv[i]);
 		if (strLen > 0) {
 			char fileCheck = argv[i][strLen - 1];
 			if (fileCheck == 'z') {
 				decompress(argv[i]);
 			}
 			else if (fileCheck == 'w') {
-				printf("Compression currently not supported\n");
+				compress(argv[i]);
 			}
 			else {
 				printf("Unable to identify whether to compress or decompress file\nEnter 'D' to decompress, 'C' to compress, or any other character to skip\n");
-				int answer = (char) getc(stdin);
+				int answer = (char)getc(stdin);
 				if (answer == 'D' || answer == 'd') {
 					decompress(argv[i]);
 				}
 				else if (answer == 'C' || answer == 'c') {
-					printf("Compression currently not supported\n");
+					compress(argv[i]);
 				}
 				else {
 					continue;
@@ -116,7 +143,7 @@ void decompress(char* filename) {
 		for (int j = 0; j < 8 && (unsigned)ftell(normal) < filesize && !feof(normal); ++j) {
 			// Literal byte copy
 			if (block & 0x01) {
-				memBlock[memPosition] = (char) getc(normal);
+				memBlock[memPosition] = (char)getc(normal);
 				++memPosition;
 			}// Reference
 			else {
@@ -179,4 +206,132 @@ void decompress(char* filename) {
 
 	printf("Finished Decompressing %s\n", filename);
 	return;
+}
+
+void compress(char* filename) {
+	// Try to open it
+	FILE* rawFile = fopen(filename, "rb");
+	if (rawFile == NULL) {
+		printf("ERROR: File not found: %s\n", filename);
+		return;
+	}
+	printf("Compressing %s\n", filename);
+
+	// Make the output file name
+	char outfileName[512];
+	sscanf(filename, "%507s", outfileName);
+	{
+		int nameLength = (int)strlen(outfileName);
+		outfileName[nameLength++] = '.';
+		outfileName[nameLength++] = 'l';
+		outfileName[nameLength++] = 'z';
+		outfileName[nameLength++] = '\0';
+	}
+
+	// Open the output file
+	FILE* outfile = fopen(outfileName, "wb");
+
+	fseek(rawFile, 0, SEEK_END);
+	int filesize = ftell(rawFile);
+	fseek(rawFile, 0, SEEK_SET);
+	int lastPercentDone = -1;
+
+	char * raw = (char*)malloc(sizeof(char) * (filesize));
+	fread(raw, sizeof(char), filesize, rawFile);
+	int rawPosition = 0;
+	fclose(rawFile);
+
+	// Write uncompressed data size to header
+	fseek(outfile, 4, SEEK_SET);
+	writeLittleInt(outfile, (uint32_t) filesize);
+	// Now at offset 8 (end of header)
+	// Add room space for the reference block
+	putc(0, outfile);
+
+	int posInBlock = 0;
+	uint8_t curBlock = 0;
+	int blockBackset = 1;
+
+	while (rawPosition < filesize) {
+		float percentDone = (100.0f * rawPosition) / filesize;
+		int intPercentDone = (int)percentDone;
+		if (intPercentDone % 10 == 0 && intPercentDone != lastPercentDone) {
+			printf("%d%% Completed\n", intPercentDone);
+			lastPercentDone = intPercentDone;
+		}
+
+		ReferenceBlock maxReference = findMaxReference(raw, filesize, rawPosition);
+
+		if (maxReference.length >= 3) {
+			//int offset = ((reference & 0xFF00) >> 8) | ((reference & 0x00F0) << 4);
+
+			//int backSet = ((ftell(outfile) - 18 - offset) & 0xFFF);
+
+			// Calculate the actual location in the file
+			//int readLocation = ftell(outfile) - backSet;
+
+			uint32_t backset = rawPosition - maxReference.offset;
+
+			int offset = (rawPosition - 18 - backset) & 0xFFF;
+
+			uint8_t leftByte = (offset & 0xFF);
+			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | (maxReference.length & 0xF);
+
+			putc(leftByte, outfile);
+			putc(rightByte, outfile);
+
+			rawPosition += 2;
+			curBlock = curBlock | (0x0 << (uint8_t)posInBlock);
+			blockBackset += 2;
+		}// Raw byte copy
+		else {
+			putc(raw[rawPosition], outfile);
+			curBlock = curBlock | (0x1 << (uint8_t)posInBlock);
+			++rawPosition;
+			++blockBackset;
+		}
+
+
+		++posInBlock;
+		if (posInBlock == 8) {
+			// Go back to reference block position
+			int pos = ftell(outfile);
+			fseek(outfile, pos - blockBackset, SEEK_SET);
+			// Write reference block and seek to the next blocks first data byte
+			putc(curBlock, outfile);
+			fseek(outfile, pos + 1, SEEK_SET);
+			posInBlock = 0;
+			curBlock = 0;
+			blockBackset = 1;
+		}
+		
+	}
+
+	// Make sure you don't have any data bytes without a reference block
+	if (posInBlock != 0) {
+		int pos = ftell(outfile);
+		fseek(outfile, pos - blockBackset, SEEK_SET);
+		putc(curBlock, outfile);
+		fseek(outfile, pos, SEEK_SET);
+	}
+
+	// Write in the compressed file size
+	int compressedSize = ftell(outfile);
+	fseek(outfile, 0, SEEK_SET);
+	writeLittleInt(outfile, compressedSize);
+
+	free(raw);
+	fclose(outfile);
+
+	printf("Finished Decompressing %s\n", filename);
+	return;
+}
+
+ReferenceBlock findMaxReference(char* fileData, int filesize, int maxOffset) {
+	ReferenceBlock maxReference;
+	maxReference.length = 0;
+	maxReference.offset = 0;
+
+
+	return maxReference;
 }
