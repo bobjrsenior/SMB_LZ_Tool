@@ -181,10 +181,6 @@ void decompress(char* filename) {
 					memPosition += amt;
 				}
 
-				if (memPosition == readLocation) {
-					int x = 5;
-				}
-
 				// Copy the rest of the reference bytes
 				while (length-- > 0) {
 					memBlock[memPosition++] = memBlock[readLocation++];
@@ -267,20 +263,9 @@ void compress(char* filename) {
 		ReferenceBlock maxReference = findMaxReference(raw, filesize, rawPosition);
 
 		if (maxReference.length >= 3) {
-			//int offset = ((reference & 0xFF00) >> 8) | ((reference & 0x00F0) << 4);
-
-			//int backSet = ((ftell(outfile) - 18 - offset) & 0xFFF);
-
-			// Calculate the actual location in the file
-			//int readLocation = ftell(outfile) - backSet;
-
 			uint32_t backset = rawPosition - maxReference.offset;
 
 			int offset = (rawPosition & 0xFFF) - 18 - backset;
-
-			if (backset <= 0) {
-				int x = 5;
-			}
 
 			uint8_t leftByte = (offset & 0xFF);
 			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | ((maxReference.length - 3) & 0xF);
