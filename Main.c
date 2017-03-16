@@ -327,15 +327,11 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 
 	int curOffset = maxOffset - 4095;
 
-	// Ignore negative offsets for now
-	if (curOffset < 0) {
-		curOffset = 0;
-	}
-
 	// Naive Search for now
 	while (curOffset < maxOffset) {
 		int curLength = 0;
-		while(data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+		// If the offset is less than zero, the data at that position is onsidered zero
+		while(((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) {
 			++curLength;
 		}
 		if (curLength > maxReference.length) {
