@@ -235,15 +235,16 @@ void compress(char* filename) {
 	int filesize = ftell(rawFile);
 	fseek(rawFile, 0, SEEK_SET);
 	int lastPercentDone = -1;
+	int filesizePlusOne = filesize + 1;
 
-	char * raw = (char*)malloc(sizeof(char) * (filesize));
+	char * raw = (char*)malloc(sizeof(char) * (filesize + 1));
 	fread(raw, sizeof(char), filesize, rawFile);
 	int rawPosition = 0;
 	fclose(rawFile);
 
 	// Write uncompressed data size to header
 	fseek(outfile, 4, SEEK_SET);
-	writeLittleInt(outfile, (uint32_t) filesize);
+	writeLittleInt(outfile, (uint32_t)filesize);
 	// Now at offset 8 (end of header)
 	// Add room space for the reference block
 	putc(0, outfile);
@@ -260,7 +261,7 @@ void compress(char* filename) {
 			lastPercentDone = intPercentDone;
 		}
 
-		ReferenceBlock maxReference = findMaxReference(raw, filesize, rawPosition);
+		ReferenceBlock maxReference = findMaxReference(raw, filesizePlusOne, rawPosition);
 
 		if (maxReference.length >= 3) {
 			uint32_t backset = rawPosition - maxReference.offset;
@@ -284,7 +285,6 @@ void compress(char* filename) {
 			++blockBackset;
 		}
 
-
 		++posInBlock;
 		if (posInBlock == 8) {
 			// Go back to reference block position
@@ -297,7 +297,7 @@ void compress(char* filename) {
 			curBlock = 0;
 			blockBackset = 1;
 		}
-		
+
 	}
 
 	// Make sure you don't have any data bytes without a reference block
@@ -327,24 +327,52 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 
 	int curOffset = maxOffset - 4095;
 
-	// Naive Search for now
-	while (curOffset < maxOffset) {
-		int curLength = 0;
-		// If the offset is less than zero, the data at that position is onsidered zero
-		while(((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) {
-			++curLength;
-		}
-		if (curLength > maxReference.length) {
-			maxReference.length = curLength;
-			maxReference.offset = curOffset;
-			if (curLength >= 18) {
-				maxReference.length = 18;
-				return maxReference;
-			}
+	// Duplicating loop in here so that starting at > 0 has less loop checks
+	if (curOffset < 0) {
+		if (curOffset < -18) {
+			curOffset = -18;
 		}
 
-		curLength = 0;
-		++curOffset;
+		// Naive Search for now
+		while (curOffset < maxOffset) {
+			int curLength = 0;
+			// If the offset is less than zero, the data at that position is onsidered zero
+			while (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) {
+				++curLength;
+			}
+			if (curLength > maxReference.length) {
+				maxReference.length = curLength;
+				maxReference.offset = curOffset;
+				if (curLength >= 18) {
+					maxReference.length = 18;
+					return maxReference;
+				}
+			}
+
+			curLength = 0;
+			++curOffset;
+		}
+	}
+	else {
+		// Naive Search for now
+		while (curOffset < maxOffset) {
+			int curLength = 0;
+			
+			while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+				++curLength;
+			}
+			if (curLength > maxReference.length) {
+				maxReference.length = curLength;
+				maxReference.offset = curOffset;
+				if (curLength >= 18) {
+					maxReference.length = 18;
+					return maxReference;
+				}
+			}
+
+			curLength = 0;
+			++curOffset;
+		}
 	}
 
 	return maxReference;
