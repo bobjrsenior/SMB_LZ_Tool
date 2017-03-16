@@ -181,6 +181,10 @@ void decompress(char* filename) {
 					memPosition += amt;
 				}
 
+				if (memPosition == readLocation) {
+					int x = 5;
+				}
+
 				// Copy the rest of the reference bytes
 				while (length-- > 0) {
 					memBlock[memPosition++] = memBlock[readLocation++];
@@ -272,15 +276,19 @@ void compress(char* filename) {
 
 			uint32_t backset = rawPosition - maxReference.offset;
 
-			int offset = (rawPosition - 18 - backset) & 0xFFF;
+			int offset = (rawPosition & 0xFFF) - 18 - backset;
+
+			if (backset <= 0) {
+				int x = 5;
+			}
 
 			uint8_t leftByte = (offset & 0xFF);
-			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | (maxReference.length & 0xF);
+			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | ((maxReference.length - 3) & 0xF);
 
 			putc(leftByte, outfile);
 			putc(rightByte, outfile);
 
-			rawPosition += 2;
+			rawPosition += maxReference.length;
 			curBlock = curBlock | (0x0 << (uint8_t)posInBlock);
 			blockBackset += 2;
 		}// Raw byte copy
@@ -327,11 +335,36 @@ void compress(char* filename) {
 	return;
 }
 
-ReferenceBlock findMaxReference(char* fileData, int filesize, int maxOffset) {
+ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 	ReferenceBlock maxReference;
 	maxReference.length = 0;
 	maxReference.offset = 0;
 
+	int curOffset = maxOffset - 4095;
+
+	// Ignore negative offsets for now
+	if (curOffset < 0) {
+		curOffset = 0;
+	}
+
+	// Naive Search for now
+	while (curOffset < maxOffset) {
+		int curLength = 0;
+		while(data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+			++curLength;
+		}
+		if (curLength > maxReference.length) {
+			maxReference.length = curLength;
+			maxReference.offset = curOffset;
+			if (curLength >= 18) {
+				maxReference.length = 18;
+				return maxReference;
+			}
+		}
+
+		curLength = 0;
+		++curOffset;
+	}
 
 	return maxReference;
 }
