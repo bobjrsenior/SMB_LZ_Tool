@@ -25,11 +25,11 @@ inline uint32_t readIntData(char* data, int offset) {
 	return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) + (data[offset + 3]);
 }
 
-inline void writeIntLittleData(char* data, int offset, uint32_t num) {
-	data[offset] = (char)(num);
-	data[offset + 1] = (char)(num >> 8);
-	data[offset + 2] = (char)(num >> 16);
-	data[offset + 3] = (char)(num >> 24);
+inline void writeLittleIntData(char* data, int offset, uint32_t num) {
+	data[offset] = (uint8_t)(num);
+	data[offset + 1] = (uint8_t)(num >> 8);
+	data[offset + 2] = (uint8_t)(num >> 16);
+	data[offset + 3] = (uint8_t)(num >> 24);
 }
 
 inline void writeLittleInt(FILE* file, uint32_t num) {
@@ -237,18 +237,18 @@ void compress(char* filename) {
 	fseek(rawFile, 0, SEEK_SET);
 	int lastPercentDone = -1;
 
-	char * raw = (char*)malloc(sizeof(char) * (filesize + 1));
-	fread(raw, sizeof(char), filesize, rawFile);
+	uint8_t * raw = (uint8_t*)malloc(sizeof(uint8_t) * (filesize + 1));
+	fread(raw, sizeof(uint8_t), filesize, rawFile);
 	int rawPosition = 0;
+
+	uint8_t* comp = (uint8_t*)malloc(sizeof(uint8_t) * (int)(1.25f * filesize));
+	
 	fclose(rawFile);
 
-	// Write uncompressed data size to header
-	fseek(outfile, 4, SEEK_SET);
-	writeLittleInt(outfile, (uint32_t)filesize);
-	// Now at offset 8 (end of header)
-	// Add room space for the reference block
-	putc(0, outfile);
+	writeLittleIntData(comp, 4, (uint32_t)filesize);
 
+	// 8 bytes for the header and 1 byte for the first reference block
+	int compPosition = 9;
 	int posInBlock = 0;
 	uint8_t curBlock = 0;
 	int blockBackset = 1;
@@ -271,28 +271,30 @@ void compress(char* filename) {
 			uint8_t leftByte = (offset & 0xFF);
 			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | ((maxReference.length - 3) & 0xF);
 
-			putc(leftByte, outfile);
-			putc(rightByte, outfile);
+			comp[compPosition] = leftByte;
+			comp[compPosition + 1] = rightByte;
+
+			++compPosition;
+			++compPosition;
 
 			rawPosition += maxReference.length;
 			curBlock = curBlock | (0x0 << (uint8_t)posInBlock);
 			blockBackset += 2;
 		}// Raw byte copy
 		else {
-			putc(raw[rawPosition], outfile);
+			comp[compPosition] = raw[rawPosition];
+
 			curBlock = curBlock | (0x1 << (uint8_t)posInBlock);
 			++rawPosition;
 			++blockBackset;
+			++compPosition;
 		}
 
 		++posInBlock;
 		if (posInBlock == 8) {
-			// Go back to reference block position
-			int pos = ftell(outfile);
-			fseek(outfile, pos - blockBackset, SEEK_SET);
-			// Write reference block and seek to the next blocks first data byte
-			putc(curBlock, outfile);
-			fseek(outfile, pos + 1, SEEK_SET);
+			comp[compPosition - blockBackset] = curBlock;
+
+			++compPosition;
 			posInBlock = 0;
 			curBlock = 0;
 			blockBackset = 1;
@@ -302,23 +304,33 @@ void compress(char* filename) {
 
 	// Make sure you don't have any data bytes without a reference block
 	if (posInBlock != 0) {
-		int pos = ftell(outfile);
-		fseek(outfile, pos - blockBackset, SEEK_SET);
-		putc(curBlock, outfile);
-		fseek(outfile, pos, SEEK_SET);
+		comp[compPosition - blockBackset] = curBlock;
 	}
 
-	// Write in the compressed file size
-	int compressedSize = ftell(outfile);
-	fseek(outfile, 0, SEEK_SET);
-	writeLittleInt(outfile, compressedSize);
+	// Write size of compressed data to header
+	writeLittleIntData(comp, 0, (uint32_t)compPosition);
 
+	// Write compressed data to file
+	// Check if 4 byte aligned
+	if (compPosition ^ 0b01) {
+		fwrite(comp, sizeof(uint32_t), compPosition >> 2, outfile);
+	}
+	else {
+		fwrite(comp, sizeof(uint8_t), compPosition, outfile);
+	}
+	
 	free(raw);
+	free(comp);
 	fclose(outfile);
 
 	printf("Finished Decompressing %s\n", filename);
 	return;
 }
+
+#define MAX_PAST_MATCHES 16
+ReferenceBlock pastMatches[MAX_PAST_MATCHES];
+int numPastMatches = 0;
+int curPastMatch = 0;
 
 ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 	ReferenceBlock maxReference;
@@ -326,22 +338,95 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 	maxReference.offset = 0;
 
 	int curOffset = maxOffset - 4095;
-	int initOffset = curOffset;
-	int kmp[18];
-	for (int i = 0; i < 18 && maxOffset + i < filesize; ++i) {
-		int shift = i + 1;
-		for (int j = i - 1; j >= 0; --j) {
-			if (data[maxOffset + i] == data[maxOffset + j]) {
-				shift = i - j;
+	//int initOffset = curOffset;
+
+	for (int i = 0; i < numPastMatches; ++i) {
+		if (pastMatches[i].offset < curOffset) { continue; }
+		
+		int curLength = 0;
+		for (; curLength < pastMatches[i].length; ++curLength) {
+			if (data[curOffset + curLength] != data[maxOffset + curLength]) {
 				break;
 			}
 		}
-
-		kmp[i] = shift;
+		if (curLength > maxReference.length) {
+			maxReference.length = curLength;
+			maxReference.offset = pastMatches[i].offset;
+			if (curLength == pastMatches[i].length) {
+				pastMatches[i].offset = maxOffset;
+			}
+		}
 	}
+	
+	if (curOffset >= 0) {
+		curOffset += maxReference.length;
+		int maxOffsetPlusMaxReference = maxOffset + maxReference.length;
 
-	// Duplicating loop in here so that starting at > 0 has less loop checks
-	if (curOffset < 0) {
+		int kmp[18];
+		for (int i = 0; i < 18 && maxOffset + i < filesize; ++i) {
+			int shift = i + 1;
+			for (int j = i - 1; j >= 0; --j) {
+				if (data[maxOffset + i] == data[maxOffset + j]) {
+					shift = i - j;
+					break;
+				}
+			}
+
+			kmp[i] = shift;
+		}
+
+		// Naive Search for now
+		while (curOffset - maxReference.length < maxOffset) {
+
+			if (data[curOffset] == data[maxOffsetPlusMaxReference]) {
+				int good = 0;
+
+				// Check previous entries
+				for (int i = 1; i <= maxReference.length; ++i) {
+					if (data[curOffset - i] != data[maxOffsetPlusMaxReference - i]) {
+						good = kmp[maxReference.length - i + 1];
+						break;
+					}
+				}
+
+				if (good != 0) {
+					curOffset += good;
+				}
+				else {
+					// If it gets here, it's one higher than the previous max length
+					int curLength = 1;
+					while (data[curOffset + curLength] == data[maxOffsetPlusMaxReference + curLength] && maxOffsetPlusMaxReference + curLength < filesize) {
+						++curLength;
+					}
+
+					maxReference.offset = curOffset - maxReference.length;
+					maxReference.length = curLength + maxReference.length;
+
+					if (maxReference.length >= 18) {
+						maxReference.length = 18;
+						pastMatches[curPastMatch++] = maxReference;
+						if (curPastMatch == MAX_PAST_MATCHES) {
+							curPastMatch = 0;
+						}
+						return maxReference;
+					}
+					else if (maxOffset + maxReference.length >= filesize) {
+						pastMatches[curPastMatch++] = maxReference;
+						if (curPastMatch == MAX_PAST_MATCHES) {
+							curPastMatch = 0;
+						}
+						return maxReference;
+					}
+					maxOffsetPlusMaxReference = maxOffset + maxReference.length;
+					curOffset += curLength + 1;
+				}
+			}
+			else {
+				++curOffset;
+			}
+		}
+	}// Duplicating loop in here so that starting at > 0 has less loop checks
+	else {
 		if (curOffset < -18) {
 			curOffset = -18;
 		}
@@ -366,102 +451,12 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 			++curOffset;
 		}
 	}
-	else {
-		curOffset += maxReference.length;
-
-		// Naive Search for now
-		while (curOffset - maxReference.length < maxOffset) {
-		
-			if (data[curOffset] == data[maxOffset + maxReference.length]) {
-				int good = 0;
-				
-				// Check previous entries
-				for (int i = 1; i <= maxReference.length; ++i) {
-					if (data[curOffset - i] != data[maxOffset + maxReference.length - i]) {
-						good = kmp[maxReference.length - i + 1];
-						break;
-					}
-				}
-
-				if (good != 0) {
-					curOffset += good;
-				}
-				else {
-					// If it gets here, it's one higher than the previous max length
-					int curLength = 1;
-					while (data[curOffset + curLength] == data[maxOffset + maxReference.length + curLength] && maxOffset + maxReference.length + curLength < filesize) {
-						++curLength;
-					}
-
-					maxReference.offset = curOffset - maxReference.length;
-					maxReference.length = curLength + maxReference.length;
-						
-					if (maxReference.length >= 18) {
-						maxReference.length = 18;
-						return maxReference;
-					}
-					else if (maxOffset + maxReference.length >= filesize) {
-						return maxReference;
-					}
-					curOffset += curLength + 1;
-
-				}
-			}
-			else {
-				++curOffset;
-			}
-
-			/*while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
-				++curLength;
-			}
-			if (curLength > maxReference.length) {
-				maxReference.length = curLength;
-				maxReference.offset = curOffset;
-				if (curLength >= 18) {
-					maxReference.length = 18;
-					return maxReference;
-				}
-				else if (maxOffset + curLength >= filesize) {
-					break;
-				}
-			}
-
-			curLength = 0;
-			++curOffset
-			*/
+	
+	if (maxReference.length > 3 && maxReference.offset >= 0) {
+		pastMatches[curPastMatch++] = maxReference;
+		if (curPastMatch == MAX_PAST_MATCHES) {
+			curPastMatch = 0;
 		}
-		/*ReferenceBlock ref1 = maxReference;
-
-		curOffset = initOffset;
-		
-		// Naive Search for now
-		while (curOffset < maxOffset) {
-			int curLength = 0;
-			while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
-				++curLength;
-			}
-			if (curLength > maxReference.length) {
-				maxReference.length = curLength;
-				maxReference.offset = curOffset;
-				if (curLength >= 18) {
-					maxReference.length = 18;
-					return maxReference;
-				}
-				else if (maxOffset + curLength >= filesize) {
-					break;
-				}
-			}
-
-			curLength = 0;
-			++curOffset;
-		}
-
-		if (maxReference.length != ref1.length) {
-			int x = 5;
-		}
-		*/
-
 	}
-
 	return maxReference;
 }
