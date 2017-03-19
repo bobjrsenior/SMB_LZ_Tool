@@ -312,7 +312,7 @@ void compress(char* filename) {
 
 	// Write compressed data to file
 	// Check if 4 byte aligned
-	if (compPosition ^ 0b01) {
+	if (((((uint8_t) compPosition) & 0b00001111) ^ 0b1011) == 0b1111) {
 		fwrite(comp, sizeof(uint32_t), compPosition >> 2, outfile);
 	}
 	else {
@@ -327,106 +327,40 @@ void compress(char* filename) {
 	return;
 }
 
-#define MAX_PAST_MATCHES 16
-ReferenceBlock pastMatches[MAX_PAST_MATCHES];
-int numPastMatches = 0;
-int curPastMatch = 0;
-
 ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 	ReferenceBlock maxReference;
 	maxReference.length = 2;
 	maxReference.offset = 0;
 
 	int curOffset = maxOffset - 4095;
-	//int initOffset = curOffset;
 
-	for (int i = 0; i < numPastMatches; ++i) {
-		if (pastMatches[i].offset < curOffset) { continue; }
+	// Duplicating loop in here so that starting at > 0 has less loop checks
+	if (curOffset >= 0) {
 		
-		int curLength = 0;
-		for (; curLength < pastMatches[i].length; ++curLength) {
-			if (data[curOffset + curLength] != data[maxOffset + curLength]) {
-				break;
+		// Naive Search for now
+		while (curOffset < maxOffset) {
+			int curLength = 0;
+
+			while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+				++curLength;
 			}
-		}
-		if (curLength > maxReference.length) {
-			maxReference.length = curLength;
-			maxReference.offset = pastMatches[i].offset;
-			if (curLength == pastMatches[i].length) {
-				pastMatches[i].offset = maxOffset;
+			if (curLength > maxReference.length) {
+				maxReference.length = curLength;
+				maxReference.offset = curOffset;
+				if (curLength >= 18) {
+					maxReference.length = 18;
+					return maxReference;
+				}
+				else if (maxOffset + curLength >= filesize) {
+					return maxReference;
+				}
 			}
+
+			curLength = 0;
+			++curOffset;
 		}
 	}
-	
-	if (curOffset >= 0) {
-		curOffset += maxReference.length;
-		int maxOffsetPlusMaxReference = maxOffset + maxReference.length;
-
-		int kmp[18];
-		for (int i = 0; i < 18 && maxOffset + i < filesize; ++i) {
-			int shift = i + 1;
-			for (int j = i - 1; j >= 0; --j) {
-				if (data[maxOffset + i] == data[maxOffset + j]) {
-					shift = i - j;
-					break;
-				}
-			}
-
-			kmp[i] = shift;
-		}
-
-		// Naive Search for now
-		while (curOffset - maxReference.length < maxOffset) {
-
-			if (data[curOffset] == data[maxOffsetPlusMaxReference]) {
-				int good = 0;
-
-				// Check previous entries
-				for (int i = 1; i <= maxReference.length; ++i) {
-					if (data[curOffset - i] != data[maxOffsetPlusMaxReference - i]) {
-						good = kmp[maxReference.length - i + 1];
-						break;
-					}
-				}
-
-				if (good != 0) {
-					curOffset += good;
-				}
-				else {
-					// If it gets here, it's one higher than the previous max length
-					int curLength = 1;
-					while (data[curOffset + curLength] == data[maxOffsetPlusMaxReference + curLength] && maxOffsetPlusMaxReference + curLength < filesize) {
-						++curLength;
-					}
-
-					maxReference.offset = curOffset - maxReference.length;
-					maxReference.length = curLength + maxReference.length;
-
-					if (maxReference.length >= 18) {
-						maxReference.length = 18;
-						pastMatches[curPastMatch++] = maxReference;
-						if (curPastMatch == MAX_PAST_MATCHES) {
-							curPastMatch = 0;
-						}
-						return maxReference;
-					}
-					else if (maxOffset + maxReference.length >= filesize) {
-						pastMatches[curPastMatch++] = maxReference;
-						if (curPastMatch == MAX_PAST_MATCHES) {
-							curPastMatch = 0;
-						}
-						return maxReference;
-					}
-					maxOffsetPlusMaxReference = maxOffset + maxReference.length;
-					curOffset += curLength + 1;
-				}
-			}
-			else {
-				++curOffset;
-			}
-		}
-	}// Duplicating loop in here so that starting at > 0 has less loop checks
-	else {
+	else{
 		if (curOffset < -18) {
 			curOffset = -18;
 		}
@@ -451,12 +385,6 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 			++curOffset;
 		}
 	}
-	
-	if (maxReference.length > 3 && maxReference.offset >= 0) {
-		pastMatches[curPastMatch++] = maxReference;
-		if (curPastMatch == MAX_PAST_MATCHES) {
-			curPastMatch = 0;
-		}
-	}
+
 	return maxReference;
 }
