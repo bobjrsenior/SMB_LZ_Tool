@@ -260,7 +260,7 @@ void compress(char* filename) {
 			printf("%d%% Completed\n", intPercentDone);
 			lastPercentDone = intPercentDone;
 		}
-
+		++posInBlock;
 		ReferenceBlock maxReference = findMaxReference(raw, filesize, rawPosition);
 
 		if (maxReference.length >= 3) {
@@ -274,8 +274,7 @@ void compress(char* filename) {
 			comp[compPosition] = leftByte;
 			comp[compPosition + 1] = rightByte;
 
-			++compPosition;
-			++compPosition;
+			compPosition += 2;
 
 			rawPosition += maxReference.length;
 			curBlock = curBlock | (0x0 << (uint8_t)posInBlock);
@@ -290,13 +289,12 @@ void compress(char* filename) {
 			++compPosition;
 		}
 
-		++posInBlock;
 		if (posInBlock == 8) {
 			comp[compPosition - blockBackset] = curBlock;
 
-			++compPosition;
 			posInBlock = 0;
 			curBlock = 0;
+			++compPosition;
 			blockBackset = 1;
 		}
 
@@ -339,8 +337,24 @@ ReferenceBlock findMaxReference(uint8_t* data, int filesize, int maxOffset) {
 			// Naive Search for now
 			while (curOffset < maxOffset) {
 				if (data[curOffset] == data[maxOffset]) {
-					register int curLength = 0;
+					register int curLength = 1;
+
 					do {
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
 						++curLength;
 						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
 						++curLength;
@@ -357,7 +371,10 @@ ReferenceBlock findMaxReference(uint8_t* data, int filesize, int maxOffset) {
 						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
 						++curLength;
 						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
-					} while (data[curOffset + curLength] == data[maxOffset + curLength]);
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength]) { break; }
+						++curLength;
+					} while (0);
 
 
 					if (curLength > maxReference.length) {
@@ -377,26 +394,45 @@ ReferenceBlock findMaxReference(uint8_t* data, int filesize, int maxOffset) {
 			// Naive Search for now
 			while (curOffset < maxOffset) {
 				if (data[curOffset] == data[maxOffset]) {
-					register int curLength = 0;
+					register int curLength = 1;
 
 					do {
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 						++curLength;
-						if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
-					} while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize);
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+						if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+						++curLength;
+
+					} while (0);
 
 					if (curLength > maxReference.length) {
 						maxReference.length = curLength;
@@ -423,26 +459,45 @@ ReferenceBlock findMaxReference(uint8_t* data, int filesize, int maxOffset) {
 		// Naive Search for now (Handle when curOffset is < 0)
 		while (curOffset < maxOffset && curOffset < 0) {
 			if (((curOffset >= 0) ? (data[curOffset] == data[maxOffset]) : (0 == data[maxOffset]))) {
-				register int curLength = 0;
+				register int curLength = 1;
 				// If the offset is less than zero, the data at that position is onsidered zero
 				do {
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) { break; }
-				} while (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize);
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (((curOffset + curLength >= 0) ? (data[curOffset + curLength] != data[maxOffset + curLength]) : (0 != data[maxOffset + curLength])) || maxOffset + curLength == filesize) { break; }
+					++curLength;
+
+				} while (0);
 
 				if (curLength > maxReference.length) {
 					maxReference.length = curLength;
@@ -459,26 +514,45 @@ ReferenceBlock findMaxReference(uint8_t* data, int filesize, int maxOffset) {
 		// Naive Search for now (Handle when curOffset is >= 0 (less loop checks needed))
 		while (curOffset < maxOffset) {
 			if (data[curOffset] == data[maxOffset]) {
-				register int curLength = 0;
+				register int curLength = 1;
 
 				do {
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
 					++curLength;
-					if (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) { break; }
-				} while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize);
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+					if (data[curOffset + curLength] != data[maxOffset + curLength] || maxOffset + curLength == filesize) { break; }
+					++curLength;
+
+				} while (0);
 
 				if (curLength > maxReference.length) {
 					maxReference.length = curLength;
