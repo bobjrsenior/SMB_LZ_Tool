@@ -337,11 +337,62 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 	// Duplicating loop in here so that starting at > 0 has less loop checks
 	if (curOffset >= 0) {
 		
-		// Naive Search for now
-		while (curOffset < maxOffset) {
-			int curLength = 0;
+		if(maxOffset + 4096 < filesize) {
+			// Naive Search for now
+			while (curOffset < maxOffset) {
+				int curLength = 0;
 
-			while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+				while (data[curOffset + curLength] == data[maxOffset + curLength]) {
+					++curLength;
+				}
+				if (curLength > maxReference.length) {
+					maxReference.length = curLength;
+					maxReference.offset = curOffset;
+					if (curLength >= 18) {
+						maxReference.length = 18;
+						return maxReference;
+					}
+				}
+
+				curLength = 0;
+				++curOffset;
+			}
+		}
+		else {
+			// Naive Search for now
+			while (curOffset < maxOffset) {
+				int curLength = 0;
+
+				while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
+					++curLength;
+				}
+				if (curLength > maxReference.length) {
+					maxReference.length = curLength;
+					maxReference.offset = curOffset;
+					if (curLength >= 18) {
+						maxReference.length = 18;
+						return maxReference;
+					}
+					else if (maxOffset + curLength >= filesize) {
+						return maxReference;
+					}
+				}
+
+				curLength = 0;
+				++curOffset;
+			}
+		}
+	}
+	else{
+		if (curOffset < -18) {
+			curOffset = -18;
+		}
+
+		// Naive Search for now (Handle when curOffset is < 0)
+		while (curOffset < maxOffset && curOffset < 0) {
+			int curLength = 0;
+			// If the offset is less than zero, the data at that position is onsidered zero
+			while (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) {
 				++curLength;
 			}
 			if (curLength > maxReference.length) {
@@ -351,25 +402,17 @@ ReferenceBlock findMaxReference(char* data, int filesize, int maxOffset) {
 					maxReference.length = 18;
 					return maxReference;
 				}
-				else if (maxOffset + curLength >= filesize) {
-					return maxReference;
-				}
 			}
 
 			curLength = 0;
 			++curOffset;
 		}
-	}
-	else{
-		if (curOffset < -18) {
-			curOffset = -18;
-		}
 
-		// Naive Search for now
+		// Naive Search for now (Handle when curOffset is >= 0 (less loop checks needed))
 		while (curOffset < maxOffset) {
 			int curLength = 0;
 			// If the offset is less than zero, the data at that position is onsidered zero
-			while (((curOffset + curLength >= 0) ? (data[curOffset + curLength] == data[maxOffset + curLength]) : (0 == data[maxOffset + curLength])) && maxOffset + curLength < filesize) {
+			while (data[curOffset + curLength] == data[maxOffset + curLength] && maxOffset + curLength < filesize) {
 				++curLength;
 			}
 			if (curLength > maxReference.length) {
