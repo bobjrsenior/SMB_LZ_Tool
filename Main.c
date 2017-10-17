@@ -347,7 +347,6 @@ ReferenceBlock findMaxReference(const uint8_t* data, int filesize, int maxOffset
 	}
 	char kmpTable[19];
 	kmpTable[0] = 1;
-	char *kmpTableConvienent = (kmpTable + 1);
 	for (int i = 0; i < maxLength; i++) {
 		char skip = 1;
 		for (int j = i - 1; j >= 0; j--) {
@@ -365,14 +364,6 @@ ReferenceBlock findMaxReference(const uint8_t* data, int filesize, int maxOffset
 		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < maxLength) curLength++;
 
 		if (curLength > maxReference.length) {
-			if (maxOffset + curLength > filesize) {
-				curLength = filesize - maxOffset;
-				// We can break since this is the end of the file
-				if (curLength <= maxReference.length) {
-					break;
-				}
-			}
-			
 			maxReference.length = curLength;
 			maxReference.offset = curOffset;
 			if (curLength == maxLength) {
