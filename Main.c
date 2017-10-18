@@ -40,8 +40,8 @@ inline void writeLittleInt(FILE* file, uint32_t num) {
 }
 
 typedef struct {
-	int length;
-	int offset;
+	uint32_t length;
+	uint32_t offset;
 }ReferenceBlock;
 
 
@@ -49,7 +49,7 @@ void decompress(char* filename);
 
 void compress(char* filename);
 
-ReferenceBlock findMaxReference(const uint8_t* fileData, int filesize, int maxOffset);
+ReferenceBlock findMaxReference(const uint8_t* fileData, uint32_t filesize, uint32_t maxOffset);
 
 int main(int argc, char* argv[]) {
 	if (argc <= 1) {
@@ -240,10 +240,11 @@ void compress(char* filename) {
 	// Allocate 4096 bytes in the beginning to avoid bounds checking
 	// negative offsets count as 0, so it can be treated as normal
 	// Allocate 18 bytes at the end to account for overrun at the end of the file
-	uint8_t * rawActualPtr = (uint8_t*)calloc((filesize + 1) + 4096 + 18, sizeof(uint8_t));
-	uint8_t *raw = (rawActualPtr + 4096);
-	fread(raw, sizeof(uint8_t), filesize, rawFile);
-	int rawPosition = 0;
+	uint8_t * raw = (uint8_t*)calloc((filesize + 1) + 4096 + 18, sizeof(uint8_t));
+	//uint8_t *raw = (rawActualPtr + 4096);
+	fread((raw + 4096), sizeof(uint8_t), filesize, rawFile);
+	uint32_t rawPosition = 4096;
+	uint32_t filesizeStandardized = filesize + 4096;
 
 	uint8_t* comp = (uint8_t*)malloc(sizeof(uint8_t) * (int)(1.25f * filesize));
 	
@@ -257,7 +258,7 @@ void compress(char* filename) {
 	uint8_t curBlock = 0;
 	int blockBackset = 1;
 
-	while (rawPosition < filesize) {
+	while (rawPosition < filesizeStandardized) {
 		float percentDone = (100.0f * rawPosition) / filesize;
 		int intPercentDone = (int)percentDone;
 		if (intPercentDone % 10 == 0 && intPercentDone != lastPercentDone) {
@@ -265,12 +266,12 @@ void compress(char* filename) {
 			lastPercentDone = intPercentDone;
 		}
 		++posInBlock;
-		ReferenceBlock maxReference = findMaxReference(raw, filesize, rawPosition);
+		ReferenceBlock maxReference = findMaxReference(raw, filesizeStandardized, rawPosition);
 
 		if (maxReference.length >= 3) {
 			uint32_t backset = rawPosition - maxReference.offset;
 
-			int offset = (rawPosition & 0xFFF) - 18 - backset;
+			uint32_t offset = (rawPosition & 0xFFF) - 18 - backset;
 
 			uint8_t leftByte = (offset & 0xFF);
 			uint8_t rightByte = (((offset >> 8) & 0xF) << 4) | ((maxReference.length - 3) & 0xF);
@@ -321,7 +322,7 @@ void compress(char* filename) {
 		fwrite(comp, sizeof(uint8_t), compPosition, outfile);
 	}
 	
-	free(rawActualPtr);
+	free(raw);
 	free(comp);
 	fclose(outfile);
 
@@ -329,13 +330,13 @@ void compress(char* filename) {
 	return;
 }
 
-ReferenceBlock findMaxReference(const uint8_t* data, int filesize, int maxOffset) {
+ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t maxOffset) {
 	ReferenceBlock maxReference = { 2, 0 };
 
-	int curOffset = maxOffset - 4095;
+	uint32_t curOffset = maxOffset - 4095;
 
-	if (curOffset < -18) {
-		curOffset = -18;
+	if (curOffset < (4096 - 18)) {
+		curOffset = (4096 - 18);
 	}
 
 	int maxLength = 18;
@@ -345,8 +346,7 @@ ReferenceBlock findMaxReference(const uint8_t* data, int filesize, int maxOffset
 			return maxReference;
 		}
 	}
-	char kmpTable[19];
-	kmpTable[0] = 1;
+	char kmpTable[19] = { 1 };
 	for (int i = 0; i < maxLength; i++) {
 		char skip = 1;
 		for (int j = i - 1; j >= 0; j--) {
@@ -360,14 +360,16 @@ ReferenceBlock findMaxReference(const uint8_t* data, int filesize, int maxOffset
 
 	
 	while (curOffset < maxOffset) {
-		int curLength = 0;
-		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < maxLength) curLength++;
+		uint32_t curLength = 0;
+		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < (uint32_t)maxLength) {
+			curLength++;
+		}
 
 		if (curLength > maxReference.length) {
 			maxReference.length = curLength;
 			maxReference.offset = curOffset;
-			if (curLength == maxLength) {
-				break;
+			if (curLength == (uint32_t)maxLength) {
+				return maxReference;
 			}
 		}
 		curOffset += kmpTable[curLength];
