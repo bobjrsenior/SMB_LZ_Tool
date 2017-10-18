@@ -339,17 +339,17 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 		curOffset = (4096 - 18);
 	}
 
-	int maxLength = 18;
+	uint32_t maxLength = 18;
 	if (maxOffset + maxLength >= filesize) {
 		maxLength = filesize - maxOffset;
 		if (maxLength < 3) {
 			return maxReference;
 		}
 	}
-	char kmpTable[19] = { 1 };
-	for (int i = 0; i < maxLength; i++) {
-		char skip = 1;
-		for (int j = i - 1; j >= 0; j--) {
+	uint32_t kmpTable[19] = { 1 };
+	for (uint32_t i = 0; i < maxLength; i++) {
+		uint32_t skip = 1;
+		for (uint32_t j = i - 1; j < 0xFF; j--) {
 			if (data[maxOffset + i] == data[maxOffset + j]) {
 				break;
 			}
@@ -361,14 +361,14 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 	
 	while (curOffset < maxOffset) {
 		uint32_t curLength = 0;
-		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < (uint32_t)maxLength) {
+		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < maxLength) {
 			curLength++;
 		}
 
 		if (curLength > maxReference.length) {
 			maxReference.length = curLength;
 			maxReference.offset = curOffset;
-			if (curLength == (uint32_t)maxLength) {
+			if (curLength == maxLength) {
 				return maxReference;
 			}
 		}
