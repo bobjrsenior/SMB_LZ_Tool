@@ -351,7 +351,16 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 		uint32_t skip = 1;
 		for (uint32_t j = i - 1; j < 0xFF; j--) {
 			if (data[maxOffset + i] == data[maxOffset + j]) {
-				break;
+				int good = 1;
+				for (uint32_t k = 1; k <= j; k++) {
+					if (data[maxOffset + j - k] != data[maxOffset + j - k]) {
+						good = 0;
+						skip += kmpTable[i + 1 - k];
+						j -= kmpTable[j + 1 - k];
+					}
+				}
+				if (good) break;
+				continue;
 			}
 			skip++;
 		}
