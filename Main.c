@@ -389,13 +389,20 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 		kmpTable[i + 1] = skip;
 	}*/
 
+	int continueChecking = 1;
+
 #pragma omp parallel for
 	for (int i = 0; i < NUM_THREADS; i++) {
 		uint32_t localCurOffset = startOffsets[i];
 		uint32_t localMaxOffset = maxOffsets[i];
 		ReferenceBlock localMaxReference = { 2, 0 };
 
-		while (localCurOffset < localMaxOffset) {
+		while (localCurOffset < localMaxOffset && continueChecking) {
+			// Greedy checking for max length is optimal
+			// See Corollary 3.3.4 on page 44 of https://hal.archives-ouvertes.fr/tel-00804215/document
+			// Alessio Langiu. Optimal Parsing for dictionary text compression. Other [cs.OH]. Universite
+			//	Paris - Est, 2012. English. .
+			// (Note that the last e in Universite has an accent aigu (looks like a forward tick), but is removed for ascii compatable source code)
 			uint32_t curLength = 0;
 			while (data[localCurOffset + curLength] == data[maxOffset + curLength] && curLength != maxLength) {
 				curLength++;
@@ -405,6 +412,7 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 				localMaxReference.length = curLength;
 				localMaxReference.offset = localCurOffset;
 				if (curLength == maxLength) {
+					continueChecking = 0;
 					break;
 				}
 			}
