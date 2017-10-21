@@ -363,6 +363,7 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 		startOffsets[i] = curStartOffset;
 		curStartOffset += threadDistance;
 		maxOffsets[i] = curStartOffset;
+		maxReferences[i] = { 0, 2 };
 	}
 	maxOffsets[NUM_THREADS - 1] = maxOffset;
 
