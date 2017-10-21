@@ -270,7 +270,7 @@ void compress(char* filename) {
 			printf("%d%% Completed\n", intPercentDone);
 			lastPercentDone = intPercentDone;
 		}
-		++posInBlock;
+		
 		ReferenceBlock maxReference = findMaxReference(raw, filesizeStandardized, rawPosition);
 
 		if (maxReference.length >= 3) {
@@ -299,6 +299,7 @@ void compress(char* filename) {
 			++compPosition;
 		}
 
+		++posInBlock;
 		if (posInBlock == 8) {
 			comp[compPosition - blockBackset] = curBlock;
 
