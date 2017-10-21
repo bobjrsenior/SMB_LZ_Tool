@@ -402,7 +402,8 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 			// See Corollary 3.3.4 on page 44 of https://hal.archives-ouvertes.fr/tel-00804215/document
 			// Alessio Langiu. Optimal Parsing for dictionary text compression. Other [cs.OH]. Universite
 			//	Paris - Est, 2012. English. .
-			// (Note that the last e in Universite has an accent aigu (looks like a forward tick), but is removed for ascii compatable source code)
+			// (Note that the last e in Universite has an accent aigu (looks like a forward tick),
+			//   but is removed for ascii compatable source code)
 			uint32_t curLength = 0;
 			while (data[localCurOffset + curLength] == data[maxOffset + curLength] && curLength != maxLength) {
 				curLength++;
