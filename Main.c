@@ -6,23 +6,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <omp.h>
+
+#define NUM_THREADS 2
 
 inline uint32_t readInt(FILE* file) {
-	uint32_t c1 = getc(file);
-	uint32_t c2 = getc(file) << 8;
-	uint32_t c3 = getc(file) << 16;
-	uint32_t c4 = getc(file) << 24;
+	uint32_t c1 = (uint32_t)(getc(file));
+	uint32_t c2 = (uint32_t)(getc(file) << 8);
+	uint32_t c3 = (uint32_t)(getc(file) << 16);
+	uint32_t c4 = (uint32_t)(getc(file) << 24);
 	return (c1 | c2 | c3 | c4);
 }
 
 inline uint16_t readShort(FILE* file) {
-	uint32_t c1 = getc(file) << 8;
-	uint32_t c2 = getc(file);
+	uint32_t c1 = (uint32_t)(getc(file) << 8);
+	uint32_t c2 = (uint32_t)(getc(file));
 	return (uint16_t)(c1 | c2);
 }
 
 inline uint32_t readIntData(char* data, int offset) {
-	return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) + (data[offset + 3]);
+	return (uint32_t)((data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) + (data[offset + 3]));
 }
 
 inline void writeLittleIntData(uint8_t* data, int offset, uint32_t num) {
@@ -33,10 +36,10 @@ inline void writeLittleIntData(uint8_t* data, int offset, uint32_t num) {
 }
 
 inline void writeLittleInt(FILE* file, uint32_t num) {
-	putc(num, file);
-	putc(num >> 8, file);
-	putc(num >> 16, file);
-	putc(num >> 24, file);
+	putc((uint8_t)(num), file);
+	putc((uint8_t)(num >> 8), file);
+	putc((uint8_t)(num >> 16), file);
+	putc((uint8_t)(num >> 24), file);
 }
 
 typedef struct {
@@ -55,6 +58,8 @@ int main(int argc, char* argv[]) {
 	if (argc <= 1) {
 		printf("Add lz paths as command line params");
 	}
+
+	omp_set_num_threads(NUM_THREADS);
 
 	// Go through every command line arg
 	for (int i = 1; i < argc; ++i) {
@@ -233,7 +238,7 @@ void compress(char* filename) {
 	FILE* outfile = fopen(outfileName, "wb");
 
 	fseek(rawFile, 0, SEEK_END);
-	int filesize = ftell(rawFile);
+	uint32_t filesize = (uint32_t)ftell(rawFile);
 	fseek(rawFile, 0, SEEK_SET);
 	int lastPercentDone = -1;
 
@@ -250,13 +255,13 @@ void compress(char* filename) {
 	
 	fclose(rawFile);
 
-	writeLittleIntData(comp, 4, (uint32_t)filesize);
+	writeLittleIntData(comp, 4, filesize);
 
 	// 8 bytes for the header and 1 byte for the first reference block
-	int compPosition = 9;
-	int posInBlock = 0;
+	uint32_t compPosition = 9;
+	uint32_t posInBlock = 0;
 	uint8_t curBlock = 0;
-	int blockBackset = 1;
+	uint32_t blockBackset = 1;
 
 	while (rawPosition < filesizeStandardized) {
 		float percentDone = (100.0f * rawPosition) / filesize;
@@ -282,13 +287,13 @@ void compress(char* filename) {
 			compPosition += 2;
 
 			rawPosition += maxReference.length;
-			curBlock = curBlock | (0x0 << (uint8_t)posInBlock);
+			curBlock = (uint8_t)(curBlock | (0x0 << (uint8_t)posInBlock));
 			blockBackset += 2;
 		}// Raw byte copy
 		else {
 			comp[compPosition] = raw[rawPosition];
 
-			curBlock = curBlock | (0x1 << (uint8_t)posInBlock);
+			curBlock = (uint8_t)(curBlock | (0x1 << (uint8_t)posInBlock));
 			++rawPosition;
 			++blockBackset;
 			++compPosition;
@@ -332,6 +337,10 @@ void compress(char* filename) {
 
 ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t maxOffset) {
 	ReferenceBlock maxReference = { 2, 0 };
+	ReferenceBlock maxReferences[NUM_THREADS];
+	maxReferences[0] = { 2, 0 };
+	uint32_t startOffsets[NUM_THREADS];
+	uint32_t maxOffsets[NUM_THREADS];
 
 	uint32_t curOffset = maxOffset - 4095;
 
@@ -343,20 +352,32 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 	if (maxOffset + maxLength >= filesize) {
 		maxLength = filesize - maxOffset;
 		if (maxLength < 3) {
-			return maxReference;
+			return maxReferences[0];
 		}
 	}
-	uint32_t kmpTable[19] = { 1 };
+
+	uint32_t distance = maxOffset - curOffset;
+	uint32_t threadDistance = distance >> (NUM_THREADS - 1);
+	uint32_t curStartOffset = curOffset;
+	for (int i = 0; i < NUM_THREADS; i++) {
+		startOffsets[i] = curStartOffset;
+		curStartOffset += threadDistance;
+		maxOffsets[i] = curStartOffset;
+	}
+	maxOffsets[NUM_THREADS - 1] = maxOffset;
+
+	/*uint32_t kmpTable[19] = { 1 };
 	for (uint32_t i = 0; i < maxLength; i++) {
 		uint32_t skip = 1;
 		for (uint32_t j = i - 1; j < 0xFF; j--) {
 			if (data[maxOffset + i] == data[maxOffset + j]) {
 				int good = 1;
 				for (uint32_t k = 1; k <= j; k++) {
-					if (data[maxOffset + j - k] != data[maxOffset + j - k]) {
+					if (data[maxOffset + j - k] != data[maxOffset + i - k]) {
 						good = 0;
-						skip += kmpTable[i + 1 - k];
+						skip += kmpTable[j + 1 - k];
 						j -= kmpTable[j + 1 - k];
+						break;
 					}
 				}
 				if (good) break;
@@ -365,23 +386,37 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 			skip++;
 		}
 		kmpTable[i + 1] = skip;
+	}*/
+
+#pragma omp parallel for
+	for (int i = 0; i < NUM_THREADS; i++) {
+		uint32_t localCurOffset = startOffsets[i];
+		uint32_t localMaxOffset = maxOffsets[i];
+		ReferenceBlock localMaxReference = { 2, 0 };
+
+		while (localCurOffset < localMaxOffset) {
+			uint32_t curLength = 0;
+			while (data[localCurOffset + curLength] == data[maxOffset + curLength] && curLength != maxLength) {
+				curLength++;
+			}
+
+			if (curLength > localMaxReference.length) {
+				localMaxReference.length = curLength;
+				localMaxReference.offset = localCurOffset;
+				if (curLength == maxLength) {
+					break;
+				}
+			}
+			localCurOffset++;// += kmpTable[curLength];
+		}
+
+		maxReferences[i] = localMaxReference;
 	}
 
-	
-	while (curOffset < maxOffset) {
-		uint32_t curLength = 0;
-		while (data[curOffset + curLength] == data[maxOffset + curLength] && curLength < maxLength) {
-			curLength++;
+	for (int i = 0; i < NUM_THREADS; i++) {
+		if (maxReferences[i].length > maxReference.length) {
+			maxReference = maxReferences[i];
 		}
-
-		if (curLength > maxReference.length) {
-			maxReference.length = curLength;
-			maxReference.offset = curOffset;
-			if (curLength == maxLength) {
-				return maxReference;
-			}
-		}
-		curOffset += kmpTable[curLength];
 	}
 
 	return maxReference;
