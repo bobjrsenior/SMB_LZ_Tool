@@ -103,9 +103,9 @@ void decompress(char* filename) {
 	FILE* normal = tmpfile();
 
 	// Unfix the header (Turn it back into normal FF7 LZSS)
-	uint32_t csize = readInt(lz) - 8;
+	int csize = (int)readInt(lz) - 8;
 	// Filesize of the uncompressed data
-	int dataSize = readInt(lz);
+	int dataSize = (int)readInt(lz);
 	putc(csize & 0xFF, normal);
 	putc((csize >> 8) & 0xFF, normal);
 	putc((csize >> 16) & 0xFF, normal);
@@ -195,7 +195,7 @@ void decompress(char* filename) {
 
 			}
 			// Go to the next reference bit in the block
-			block = block >> 1;
+			block = (uint8_t) (block >> 1);
 		}
 
 
@@ -203,7 +203,7 @@ void decompress(char* filename) {
 
 	// Open the output file and copy the data into it
 	FILE* outfile = fopen(outfileName, "wb");
-	fwrite(memBlock, sizeof(char), dataSize, outfile);
+	fwrite(memBlock, sizeof(char), (size_t)dataSize, outfile);
 
 	// Close files and free memory
 	free(memBlock);
