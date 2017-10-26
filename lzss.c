@@ -52,6 +52,9 @@ static void initializeBinaryTree() {
 	rootIndex = 0;
 }
 
+/*
+* Converts a tree index into a file index
+*/
 static uint32_t convertToOffset(TREETYPE treePointer) {
 	if (treePointer > binaryTreeIndex) {
 		return (inputIndex - 4096 + (binaryTreeIndex - treePointer));
@@ -232,14 +235,14 @@ static void fixTree(uint32_t length) {
 */
 static ReferenceBlock findMaxReference() {
 	ReferenceBlock maxReference = { 2, 0 };
-	TREETYPE convert = (TREETYPE) (inputIndex - 4096 + binaryTreeIndex);
 	TREETYPE treePointer = rootIndex;
 
 	while (treePointer != nullConstant) {
-		CompareResult result = compare(inputIndex, treePointer + convert);
+		uint32_t fileOffset = convertToOffset(treePointer);
+		CompareResult result = compare(inputIndex, fileOffset);
 		if (result.length > maxReference.length) {
 			maxReference.length = result.length;
-			maxReference.offset = (treePointer + convert);
+			maxReference.offset = fileOffset;
 		}
 
 		if (result.value == 0) {
