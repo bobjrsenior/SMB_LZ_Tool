@@ -43,24 +43,31 @@ static uint8_t *outputData;
 */
 static void initializeBinaryTree() {
 	// Initialize the tree to all null values
-	memset(binaryTree, nullConstant, sizeof(TreeNode) * 4096);
+	for (TREETYPE i = 0; i < 4096; i++) {
+		binaryTree[i].parent = nullConstant;
+		binaryTree[i].leftChild = nullConstant;
+		binaryTree[i].rightChild = nullConstant;
+	}
 
 	// All values are initially negative
 	// The longest length is -18, so make
 	// the 18th from the end the initial root
-	binaryTree[0].parent = rootConstant;
-	rootIndex = 0;
+	binaryTree[4096 - 18].parent = rootConstant;
+	rootIndex = 4096 - 18;
 }
 
 /*
 * Converts a tree index into a file index
 */
 static uint32_t convertToOffset(TREETYPE treePointer) {
+	if (treePointer == binaryTreeIndex) {
+		return (inputIndex + binaryTreeIndex) - 4096;
+	}
 	if (treePointer > binaryTreeIndex) {
-		return (inputIndex - 4096 + (binaryTreeIndex - treePointer));
+		return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
 	}
 	else {
-		return (inputIndex + (4096 - binaryTreeIndex) + treePointer);
+		return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
 	}
 }
 
@@ -86,7 +93,7 @@ static void calculateNode(TREETYPE index) {
 	TREETYPE curNodeIndex = rootIndex;
 
 	// Traverse the tree til we find the new nodes perfect match...
-	while (binaryTree[curNodeIndex].parent != nullConstant) {
+	while (1) {
 		CompareResult result = compare(index, curNodeIndex);
 		if (result.value == 0) {
 			// Set the new node's parent/children to the stale version's parent/children
@@ -98,7 +105,11 @@ static void calculateNode(TREETYPE index) {
 			binaryTree[binaryTree[curNodeIndex].leftChild].parent = index;
 			binaryTree[binaryTree[curNodeIndex].rightChild].parent = index;
 
-			return;
+			binaryTree[curNodeIndex].parent = nullConstant;
+			binaryTree[curNodeIndex].leftChild = nullConstant;
+			binaryTree[curNodeIndex].rightChild = nullConstant;
+
+			break;
 		}
 		else if (result.value > 0) {
 			// If we reached a leaf. Insert the node here
@@ -106,7 +117,7 @@ static void calculateNode(TREETYPE index) {
 				binaryTree[curNodeIndex].rightChild = index;
 				binaryTree[index].parent = curNodeIndex;
 
-				return;
+				break;
 			}
 
 			// Continue searching down the right subtree
@@ -118,12 +129,17 @@ static void calculateNode(TREETYPE index) {
 				binaryTree[curNodeIndex].leftChild = index;
 				binaryTree[index].parent = curNodeIndex;
 
-				return;
+				break;
 			}
 
 			// Continue searching down the left subtree
-			curNodeIndex = binaryTree[curNodeIndex].rightChild;
+			curNodeIndex = binaryTree[curNodeIndex].leftChild;
 		}
+	}
+
+	// Change the root index if needed
+	if (binaryTree[index].parent == rootConstant) {
+		rootIndex = index;
 	}
 }
 
@@ -136,11 +152,13 @@ static void removeNode(TREETYPE index) {
 	if (binaryTree[index].leftChild == nullConstant && binaryTree[index].rightChild == nullConstant) {
 		// Make sure the node's parent doesn't point here anymore
 		TREETYPE parentIndex = binaryTree[index].parent;
-		if (binaryTree[parentIndex].rightChild == index) {
-			binaryTree[parentIndex].rightChild = nullConstant;
-		}
-		else {
-			binaryTree[parentIndex].leftChild = nullConstant;
+		if (parentIndex != rootConstant) {
+			if (binaryTree[parentIndex].rightChild == index) {
+				binaryTree[parentIndex].rightChild = nullConstant;
+			}
+			else {
+				binaryTree[parentIndex].leftChild = nullConstant;
+			}
 		}
 
 		// Set the node's parent to the nullConstant
@@ -149,11 +167,13 @@ static void removeNode(TREETYPE index) {
 	else if (binaryTree[index].leftChild == nullConstant) {
 		// Make the node's parent point to this node's right child
 		TREETYPE parentIndex = binaryTree[index].parent;
-		if (binaryTree[parentIndex].rightChild == index) {
-			binaryTree[parentIndex].rightChild = binaryTree[index].rightChild;
-		}
-		else {
-			binaryTree[parentIndex].leftChild = binaryTree[index].rightChild;
+		if (parentIndex != rootConstant) {
+			if (binaryTree[parentIndex].rightChild == index) {
+				binaryTree[parentIndex].rightChild = binaryTree[index].rightChild;
+			}
+			else {
+				binaryTree[parentIndex].leftChild = binaryTree[index].rightChild;
+			}
 		}
 
 		// Set the node's parent and right child to the nullConstant
@@ -164,11 +184,13 @@ static void removeNode(TREETYPE index) {
 	else if (binaryTree[index].rightChild == nullConstant) {
 		// Make the node's parent point to this node's left child
 		TREETYPE parentIndex = binaryTree[index].parent;
-		if (binaryTree[parentIndex].rightChild == index) {
-			binaryTree[parentIndex].rightChild = binaryTree[index].leftChild;
-		}
-		else {
-			binaryTree[parentIndex].leftChild = binaryTree[index].leftChild;
+		if (parentIndex != rootConstant) {
+			if (binaryTree[parentIndex].rightChild == index) {
+				binaryTree[parentIndex].rightChild = binaryTree[index].leftChild;
+			}
+			else {
+				binaryTree[parentIndex].leftChild = binaryTree[index].leftChild;
+			}
 		}
 
 		// Set the node's parent and right child to the nullConstant
@@ -196,11 +218,13 @@ static void removeNode(TREETYPE index) {
 
 		// Make the node's parent point to the new child
 		TREETYPE parentIndex = binaryTree[index].parent;
-		if (binaryTree[parentIndex].rightChild == index) {
-			binaryTree[parentIndex].rightChild = childIndex;
-		}
-		else {
-			binaryTree[parentIndex].leftChild = childIndex;
+		if (parentIndex != rootConstant) {
+			if (binaryTree[parentIndex].rightChild == index) {
+				binaryTree[parentIndex].rightChild = childIndex;
+			}
+			else {
+				binaryTree[parentIndex].leftChild = childIndex;
+			}
 		}
 
 		// Copy all of this node's attributes to the new child
@@ -238,6 +262,9 @@ static ReferenceBlock findMaxReference() {
 	TREETYPE treePointer = rootIndex;
 
 	while (treePointer != nullConstant) {
+		if (inputIndex == 4096) {
+			puts("There");
+		}
 		uint32_t fileOffset = convertToOffset(treePointer);
 		CompareResult result = compare(inputIndex, fileOffset);
 		if (result.length > maxReference.length) {
