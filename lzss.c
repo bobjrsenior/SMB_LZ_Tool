@@ -78,7 +78,7 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 */
 static CompareResult compare(TREETYPE index1, TREETYPE index2) {
 	for (uint32_t i = 0; i < 18; i++) {
-		int result = inputData[index1] = inputData[index2];
+		int result = inputData[index1 + i] - inputData[index2 + i];
 		if (result != 0) {
 			return { i, result };
 		}
@@ -86,24 +86,91 @@ static CompareResult compare(TREETYPE index1, TREETYPE index2) {
 	return { 18, 0 };
 }
 
+static void printTreeRecurse(int curDepth, int depth, TREETYPE curIndex) {
+	if (curDepth == depth) {
+		if (binaryTree[curIndex].leftChild != nullConstant) {
+			printf("%d\t", convertToOffset(binaryTree[curIndex].leftChild) - 4096);
+		}
+		else {
+			putchar(' ');
+		}
+
+		if (binaryTree[curIndex].rightChild != nullConstant) {
+			printf("%d\t", convertToOffset(binaryTree[curIndex].rightChild) - 4096);
+		}
+		else {
+			putchar(' ');
+		}
+	}
+	else {
+		curDepth++;
+		if (binaryTree[curIndex].leftChild != nullConstant) {
+			printTreeRecurse(curDepth, depth, binaryTree[curIndex].leftChild);
+		}
+		if (binaryTree[curIndex].rightChild != nullConstant) {
+			printTreeRecurse(curDepth, depth, binaryTree[curIndex].rightChild);
+		}
+	}
+}
+
+static void printTree(int maxDepth, TREETYPE startIndex) {
+	int numTabs = (maxDepth * 4) >> 1;
+
+	printf("TREE:\n%d\n", convertToOffset(startIndex) - 4096);
+
+	for (int depth = 0; depth < maxDepth; depth++) {
+		printTreeRecurse(0, depth, startIndex);
+		putchar('\n');
+	}
+}
+
 /*
 * Takes a node index and inserts it into the binary search tree
 */
 static void calculateNode(TREETYPE index) {
 	TREETYPE curNodeIndex = rootIndex;
+	/*
+	if (inputIndex == 8138) {
+		puts("Break");
+		//printTree(4);
+	}
+
+	if (inputIndex == 11007) {
+		puts("Break");
+		printTree(5, index);
+	}
+
+	if (inputIndex == 4098) {
+		puts("Break");
+		printTree(5, index);
+	}*/
 
 	// Traverse the tree til we find the new nodes perfect match...
 	while (1) {
-		CompareResult result = compare(index, curNodeIndex);
+		CompareResult result = compare(convertToOffset(index), convertToOffset(curNodeIndex));
 		if (result.value == 0) {
 			// Set the new node's parent/children to the stale version's parent/children
 			binaryTree[index].parent = binaryTree[curNodeIndex].parent;
 			binaryTree[index].leftChild = binaryTree[curNodeIndex].leftChild;
 			binaryTree[index].rightChild = binaryTree[curNodeIndex].rightChild;
 
+			// Set the node's parent to point to the new node
+			if (binaryTree[index].parent != rootConstant) {
+				if (binaryTree[binaryTree[index].parent].leftChild == curNodeIndex) {
+					binaryTree[binaryTree[index].parent].leftChild = index;
+				}
+				else {
+					binaryTree[binaryTree[index].parent].rightChild = index;
+				}
+			}
+
 			// Set the parents of the stale version's children to the new node
-			binaryTree[binaryTree[curNodeIndex].leftChild].parent = index;
-			binaryTree[binaryTree[curNodeIndex].rightChild].parent = index;
+			if (binaryTree[curNodeIndex].leftChild != nullConstant) {
+				binaryTree[binaryTree[curNodeIndex].leftChild].parent = index;
+			}
+			if (binaryTree[curNodeIndex].rightChild != nullConstant) {
+				binaryTree[binaryTree[curNodeIndex].rightChild].parent = index;
+			}
 
 			binaryTree[curNodeIndex].parent = nullConstant;
 			binaryTree[curNodeIndex].leftChild = nullConstant;
@@ -119,6 +186,7 @@ static void calculateNode(TREETYPE index) {
 
 				break;
 			}
+
 
 			// Continue searching down the right subtree
 			curNodeIndex = binaryTree[curNodeIndex].rightChild;
@@ -137,9 +205,28 @@ static void calculateNode(TREETYPE index) {
 		}
 	}
 
+	int count = 0;
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].leftChild == 2914 || binaryTree[i].rightChild == 2914) {
+			count++;
+		}
+	}
+	if (count > 1) {
+		puts("Multiple");
+	}
+
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].parent != nullConstant && binaryTree[i].parent != rootConstant && binaryTree[binaryTree[i].parent].leftChild != i && binaryTree[binaryTree[i].parent].rightChild != i) {
+			puts("Orphan");
+		}
+	}
+
 	// Change the root index if needed
 	if (binaryTree[index].parent == rootConstant) {
 		rootIndex = index;
+	}
+	if (binaryTree[index].rightChild == 1 && binaryTree[1].parent == nullConstant) {
+		puts("There2");
 	}
 }
 
@@ -148,6 +235,34 @@ static void calculateNode(TREETYPE index) {
 * Its parent/children will become the nullConstant
 */
 static void removeNode(TREETYPE index) {
+	//if (inputIndex > 8115 && index == 1) {
+	//	puts("Break");
+	//}
+	/*
+	if (inputIndex == 11853) {
+		puts("Break");
+		printTree(5, index);
+	}
+	if (inputIndex == 11007) {
+		puts("Break");
+		printTree(5, index);
+	}
+	if (inputIndex == 8136) {
+		puts("Break");
+		printTree(5, index);
+	}
+	*/
+	int count = 0;
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].leftChild == index || binaryTree[i].rightChild == index) {
+			count++;
+		}
+	}
+	if (count > 1) {
+		//puts("Multiple");
+	}
+
+	TREETYPE parentIndex = binaryTree[index].parent;
 	// No children
 	if (binaryTree[index].leftChild == nullConstant && binaryTree[index].rightChild == nullConstant) {
 		// Make sure the node's parent doesn't point here anymore
@@ -159,6 +274,9 @@ static void removeNode(TREETYPE index) {
 			else {
 				binaryTree[parentIndex].leftChild = nullConstant;
 			}
+		}
+		else {
+			//puts("There");
 		}
 
 		// Set the node's parent to the nullConstant
@@ -175,12 +293,17 @@ static void removeNode(TREETYPE index) {
 				binaryTree[parentIndex].leftChild = binaryTree[index].rightChild;
 			}
 		}
+		else {
+			rootIndex = binaryTree[index].rightChild;
+		}
+
+		binaryTree[binaryTree[index].rightChild].parent = binaryTree[index].parent;
 
 		// Set the node's parent and right child to the nullConstant
 		binaryTree[index].parent = nullConstant;
 		binaryTree[index].rightChild = nullConstant;
 
-	} // Onle left child
+	} // Only left child
 	else if (binaryTree[index].rightChild == nullConstant) {
 		// Make the node's parent point to this node's left child
 		TREETYPE parentIndex = binaryTree[index].parent;
@@ -192,10 +315,15 @@ static void removeNode(TREETYPE index) {
 				binaryTree[parentIndex].leftChild = binaryTree[index].leftChild;
 			}
 		}
+		else {
+			rootIndex = binaryTree[index].leftChild;
+		}
+
+		binaryTree[binaryTree[index].leftChild].parent = binaryTree[index].parent;
 
 		// Set the node's parent and right child to the nullConstant
 		binaryTree[index].parent = nullConstant;
-		binaryTree[index].rightChild = nullConstant;
+		binaryTree[index].leftChild = nullConstant;
 	} // Both children
 	else {
 		// Grab the furthest left right child
@@ -208,10 +336,21 @@ static void removeNode(TREETYPE index) {
 
 		// Detach the child from the bottom
 		if (binaryTree[childIndex].rightChild != nullConstant) {
-			binaryTree[binaryTree[childIndex].parent].leftChild = binaryTree[childIndex].rightChild;
+			if (binaryTree[childIndex].parent != index) {
+				binaryTree[binaryTree[childIndex].parent].leftChild = binaryTree[childIndex].rightChild;
+				binaryTree[binaryTree[childIndex].rightChild].parent = binaryTree[childIndex].parent;
+			}
+			else {
+				binaryTree[index].rightChild = binaryTree[childIndex].rightChild;
+			}
 		}
 		else {
-			binaryTree[binaryTree[childIndex].parent].leftChild = nullConstant;
+			if (binaryTree[childIndex].parent != index) {
+				binaryTree[binaryTree[childIndex].parent].leftChild = nullConstant;
+			}
+			else {
+				binaryTree[index].rightChild = nullConstant;
+			}
 		}
 
 		// Replace this node with the child
@@ -226,11 +365,60 @@ static void removeNode(TREETYPE index) {
 				binaryTree[parentIndex].leftChild = childIndex;
 			}
 		}
+		else {
+			rootIndex = childIndex;
+		}
 
 		// Copy all of this node's attributes to the new child
 		binaryTree[childIndex].parent = binaryTree[index].parent;
 		binaryTree[childIndex].leftChild = binaryTree[index].leftChild;
 		binaryTree[childIndex].rightChild = binaryTree[index].rightChild;
+
+		binaryTree[binaryTree[childIndex].leftChild].parent = childIndex;
+		if (binaryTree[childIndex].rightChild != nullConstant) {
+			binaryTree[binaryTree[childIndex].rightChild].parent = childIndex;
+		}
+
+		binaryTree[index].parent = nullConstant;
+		binaryTree[index].leftChild = nullConstant;
+		binaryTree[index].rightChild = nullConstant;
+	}
+
+	count = 0;
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].leftChild == 2914 || binaryTree[i].rightChild == 2914) {
+			count++;
+		}
+	}
+	if (count > 1) {
+		//puts("Multiple");
+	}
+
+	count = 0;
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].leftChild == index || binaryTree[i].rightChild == index) {
+			count++;
+			//puts("Non-Zero");
+		}
+	}
+	if (count != 0) {
+		//puts("Non-Zero");
+	}
+
+	for (int i = 0; i < 4096; i++) {
+		if (binaryTree[i].parent != nullConstant && binaryTree[i].parent != rootConstant && binaryTree[binaryTree[i].parent].leftChild != i && binaryTree[binaryTree[i].parent].rightChild != i) {
+			//puts("Orphan");
+		}
+	}
+
+	if (parentIndex != rootConstant) {
+		if (binaryTree[parentIndex].leftChild == index || binaryTree[parentIndex].rightChild == index) {
+			//puts("Bad remove");
+		}
+	}
+
+	if (binaryTree[index].rightChild == 1 && binaryTree[1].parent == nullConstant) {
+		//puts("There2");
 	}
 }
 
@@ -243,14 +431,24 @@ static void fixTree(uint32_t length) {
 	for (uint32_t i = 0; i < length; i++) {
 		if (binaryTree[binaryTreeIndex].parent != nullConstant) {
 			removeNode(binaryTreeIndex);
+			//printTree(10, rootIndex);
 		}
-		calculateNode(binaryTreeIndex);
 
+		uint32_t curIndex = binaryTreeIndex;
+
+		++inputIndex;
 		binaryTreeIndex++;
 		if (binaryTreeIndex == 4096) {
 			binaryTreeIndex = 0;
 		}
+		if (curIndex == 32) {
+			//puts("Test");
+		}
+		calculateNode(curIndex);
+		//printTree(10, rootIndex);
 	}
+
+	inputIndex -= length;
 }
 
 /*
@@ -261,9 +459,11 @@ static ReferenceBlock findMaxReference() {
 	ReferenceBlock maxReference = { 2, 0 };
 	TREETYPE treePointer = rootIndex;
 
+	//printTree(10, rootIndex);
+
 	while (treePointer != nullConstant) {
-		if (inputIndex == 4096) {
-			puts("There");
+		if (inputIndex >= 4096) {
+			//puts("There");
 		}
 		uint32_t fileOffset = convertToOffset(treePointer);
 		CompareResult result = compare(inputIndex, fileOffset);
@@ -282,7 +482,7 @@ static ReferenceBlock findMaxReference() {
 			treePointer = binaryTree[treePointer].leftChild;
 		}
 	}
-
+	//printTree(5, rootIndex);
 	if (maxReference.length > 2) {
 		fixTree(maxReference.length);
 	}
@@ -337,25 +537,31 @@ int compress(FILE *input, FILE *output) {
 		puts("Unable to allocate memory");
 		return -1;
 	}
-	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize << 2)))); // Worst case scenario is 1/8 bigger thn inputData
+	memset(inputData, 0, sizeof(uint8_t) * 4096);
+
+	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize >> 2)))); // Worst case scenario is 1/8 bigger thn inputData
 	if (outputData == NULL) {
 		puts("Unable to allocate memory");
 		return -1;
 	}
 
-	outputData += 8;
+	fread(&inputData[4096], sizeof(uint8_t), filesize, input);
+
+	outputIndex += 8;
 
 	initializeBinaryTree();
 
 	uint32_t posInBlock = 0;
 	uint8_t curBlock = 0;
 	uint32_t blockBackset = 1;
+	// Make room for initial control block
+	outputIndex++;
 
-	while (inputIndex < filesize) {
+	while (inputIndex < filesize + 4096) {
 		ReferenceBlock maxReference = findMaxReference();
 
 		// If the reference is long enough to use
-		if (maxReference.length > 3) {
+		if (maxReference.length >= 3) {
 			// Calculate the reference
 			uint32_t backset = inputIndex - maxReference.offset;
 
@@ -381,6 +587,16 @@ int compress(FILE *input, FILE *output) {
 			++inputIndex;
 			++blockBackset;
 			++outputIndex;
+		}
+
+		++posInBlock;
+		if (posInBlock == 8) {
+			outputData[outputIndex - blockBackset] = curBlock;
+			posInBlock = 0;
+			curBlock = 0;
+			// Make room for the next control block
+			++outputIndex;
+			blockBackset = 1;
 		}
 	}
 
