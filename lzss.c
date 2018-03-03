@@ -7,8 +7,8 @@
 #include "FunctionsAndDefines.h"
 
 // Used for convienence in case a
-// different type is faster (ie uint16_t)
-#define TREETYPE uint32_t
+// different type is faster (ie uint16_t vs uint32_t)
+#define TREETYPE uint16_t
 
 typedef struct {
 	TREETYPE parent;
@@ -61,13 +61,16 @@ static void initializeBinaryTree() {
 */
 static uint32_t convertToOffset(TREETYPE treePointer) {
 	if (treePointer == binaryTreeIndex) {
-		return (inputIndex + binaryTreeIndex) - 4096;
+		return inputIndex + binaryTreeIndex - 4096;
+		//return (inputIndex + binaryTreeIndex) - 4096;
 	}
 	if (treePointer > binaryTreeIndex) {
-		return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
+		return inputIndex + treePointer - binaryTreeIndex - 4096;
+		//return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
 	}
 	else {
-		return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
+		return (inputIndex - binaryTreeIndex) + treePointer;
+		//return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
 	}
 }
 
@@ -427,14 +430,18 @@ int compress(FILE *input, FILE *output) {
 	filesize = (uint32_t)ftell(input);
 	fseek(input, 0, SEEK_SET);
 
-	inputData = (uint8_t *)malloc(sizeof(uint8_t) * filesize + 4096); // Add 4096 for "negative" values
+	// Add 4096 for "negative" values
+	uint32_t paddedFilesize = filesize + 4096;
+	inputData = (uint8_t *)malloc(paddedFilesize); 
 	if (inputData == NULL) {
 		puts("Unable to allocate memory");
 		return -1;
 	}
 	memset(inputData, 0, sizeof(uint8_t) * 4096);
 
-	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize >> 2)))); // Worst case scenario is 1/8 bigger thn inputData
+	// Worst case scenario is 1/8 bigger thn inputData
+	// Make is 1/4 bigger anyways to be safe
+	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize >> 2))));
 	if (outputData == NULL) {
 		puts("Unable to allocate memory");
 		return -1;
@@ -452,7 +459,7 @@ int compress(FILE *input, FILE *output) {
 	// Make room for initial control block
 	outputIndex++;
 
-	while (inputIndex < filesize + 4096) {
+	while (inputIndex < paddedFilesize) {
 		ReferenceBlock maxReference = findMaxReference();
 
 		// If the reference is long enough to use
