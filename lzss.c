@@ -129,21 +129,6 @@ static void printTree(int maxDepth, TREETYPE startIndex) {
 */
 static void calculateNode(TREETYPE index) {
 	TREETYPE curNodeIndex = rootIndex;
-	/*
-	if (inputIndex == 8138) {
-		puts("Break");
-		//printTree(4);
-	}
-
-	if (inputIndex == 11007) {
-		puts("Break");
-		printTree(5, index);
-	}
-
-	if (inputIndex == 4098) {
-		puts("Break");
-		printTree(5, index);
-	}*/
 
 	// Traverse the tree til we find the new nodes perfect match...
 	while (1) {
@@ -205,28 +190,9 @@ static void calculateNode(TREETYPE index) {
 		}
 	}
 
-	int count = 0;
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].leftChild == 2914 || binaryTree[i].rightChild == 2914) {
-			count++;
-		}
-	}
-	if (count > 1) {
-		puts("Multiple");
-	}
-
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].parent != nullConstant && binaryTree[i].parent != rootConstant && binaryTree[binaryTree[i].parent].leftChild != i && binaryTree[binaryTree[i].parent].rightChild != i) {
-			puts("Orphan");
-		}
-	}
-
 	// Change the root index if needed
 	if (binaryTree[index].parent == rootConstant) {
 		rootIndex = index;
-	}
-	if (binaryTree[index].rightChild == 1 && binaryTree[1].parent == nullConstant) {
-		puts("There2");
 	}
 }
 
@@ -235,33 +201,6 @@ static void calculateNode(TREETYPE index) {
 * Its parent/children will become the nullConstant
 */
 static void removeNode(TREETYPE index) {
-	//if (inputIndex > 8115 && index == 1) {
-	//	puts("Break");
-	//}
-	/*
-	if (inputIndex == 11853) {
-		puts("Break");
-		printTree(5, index);
-	}
-	if (inputIndex == 11007) {
-		puts("Break");
-		printTree(5, index);
-	}
-	if (inputIndex == 8136) {
-		puts("Break");
-		printTree(5, index);
-	}
-	*/
-	int count = 0;
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].leftChild == index || binaryTree[i].rightChild == index) {
-			count++;
-		}
-	}
-	if (count > 1) {
-		//puts("Multiple");
-	}
-
 	TREETYPE parentIndex = binaryTree[index].parent;
 	// No children
 	if (binaryTree[index].leftChild == nullConstant && binaryTree[index].rightChild == nullConstant) {
@@ -383,43 +322,6 @@ static void removeNode(TREETYPE index) {
 		binaryTree[index].leftChild = nullConstant;
 		binaryTree[index].rightChild = nullConstant;
 	}
-
-	count = 0;
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].leftChild == 2914 || binaryTree[i].rightChild == 2914) {
-			count++;
-		}
-	}
-	if (count > 1) {
-		//puts("Multiple");
-	}
-
-	count = 0;
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].leftChild == index || binaryTree[i].rightChild == index) {
-			count++;
-			//puts("Non-Zero");
-		}
-	}
-	if (count != 0) {
-		//puts("Non-Zero");
-	}
-
-	for (int i = 0; i < 4096; i++) {
-		if (binaryTree[i].parent != nullConstant && binaryTree[i].parent != rootConstant && binaryTree[binaryTree[i].parent].leftChild != i && binaryTree[binaryTree[i].parent].rightChild != i) {
-			//puts("Orphan");
-		}
-	}
-
-	if (parentIndex != rootConstant) {
-		if (binaryTree[parentIndex].leftChild == index || binaryTree[parentIndex].rightChild == index) {
-			//puts("Bad remove");
-		}
-	}
-
-	if (binaryTree[index].rightChild == 1 && binaryTree[1].parent == nullConstant) {
-		//puts("There2");
-	}
 }
 
 /*
@@ -431,7 +333,6 @@ static void fixTree(uint32_t length) {
 	for (uint32_t i = 0; i < length; i++) {
 		if (binaryTree[binaryTreeIndex].parent != nullConstant) {
 			removeNode(binaryTreeIndex);
-			//printTree(10, rootIndex);
 		}
 
 		uint32_t curIndex = binaryTreeIndex;
@@ -441,11 +342,8 @@ static void fixTree(uint32_t length) {
 		if (binaryTreeIndex == 4096) {
 			binaryTreeIndex = 0;
 		}
-		if (curIndex == 32) {
-			//puts("Test");
-		}
+
 		calculateNode(curIndex);
-		//printTree(10, rootIndex);
 	}
 
 	inputIndex -= length;
@@ -462,9 +360,6 @@ static ReferenceBlock findMaxReference() {
 	//printTree(10, rootIndex);
 
 	while (treePointer != nullConstant) {
-		if (inputIndex >= 4096) {
-			//puts("There");
-		}
 		uint32_t fileOffset = convertToOffset(treePointer);
 		CompareResult result = compare(inputIndex, fileOffset);
 		if (result.length > maxReference.length) {
@@ -482,7 +377,7 @@ static ReferenceBlock findMaxReference() {
 			treePointer = binaryTree[treePointer].leftChild;
 		}
 	}
-	//printTree(5, rootIndex);
+	
 	if (maxReference.length > 2) {
 		fixTree(maxReference.length);
 	}
