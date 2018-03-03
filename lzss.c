@@ -61,15 +61,15 @@ static void initializeBinaryTree() {
 */
 static uint32_t convertToOffset(TREETYPE treePointer) {
 	if (treePointer == binaryTreeIndex) {
-		return inputIndex + binaryTreeIndex - 4096;
+		return inputIndex + (uint32_t)binaryTreeIndex - 4096;
 		//return (inputIndex + binaryTreeIndex) - 4096;
 	}
 	if (treePointer > binaryTreeIndex) {
-		return inputIndex + treePointer - binaryTreeIndex - 4096;
+		return inputIndex + (uint32_t)treePointer - (uint32_t)binaryTreeIndex - 4096;
 		//return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
 	}
 	else {
-		return (inputIndex - binaryTreeIndex) + treePointer;
+		return (inputIndex - (uint32_t)binaryTreeIndex) + (uint32_t)treePointer;
 		//return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
 	}
 }
@@ -79,7 +79,7 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 * If all 18 bytes are equal, then 0 is returned
 * Otherwise the difference between the first byte that's different is returned
 */
-static CompareResult compare(TREETYPE index1, TREETYPE index2) {
+static CompareResult compare(uint32_t index1, uint32_t index2) {
 	for (uint32_t i = 0; i < 18; i++) {
 		int result = inputData[index1 + i] - inputData[index2 + i];
 		if (result != 0) {
@@ -338,7 +338,7 @@ static void fixTree(uint32_t length) {
 			removeNode(binaryTreeIndex);
 		}
 
-		uint32_t curIndex = binaryTreeIndex;
+		TREETYPE curIndex = binaryTreeIndex;
 
 		++inputIndex;
 		binaryTreeIndex++;
@@ -432,7 +432,7 @@ int compress(FILE *input, FILE *output) {
 
 	// Add 4096 for "negative" values
 	uint32_t paddedFilesize = filesize + 4096;
-	inputData = (uint8_t *)malloc(paddedFilesize); 
+	inputData = (uint8_t *)malloc(sizeof(uint8_t) * paddedFilesize); 
 	if (inputData == NULL) {
 		puts("Unable to allocate memory");
 		return -1;
