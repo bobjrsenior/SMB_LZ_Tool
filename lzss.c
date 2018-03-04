@@ -489,11 +489,16 @@ int compress(FILE *input, FILE *output) {
 	uint32_t blockBackset = 1;
 	// Make room for initial control block
 	outputIndex++;
+	int lastPercentDone = -1;
 
 	while (inputIndex < paddedFilesize) {
-		if (inputIndex == 0x292D + 4096) {
-			//puts("There");
+		float percentDone = (100.0f * (inputIndex - 4096)) / filesize;
+		int intPercentDone = (int)percentDone;
+		if (intPercentDone % 10 == 0 && intPercentDone != lastPercentDone) {
+			printf("%d%% Completed\n", intPercentDone);
+			lastPercentDone = intPercentDone;
 		}
+
 		ReferenceBlock maxReference = findMaxReference();
 		
 		// If the reference is long enough to use
