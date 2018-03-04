@@ -33,7 +33,7 @@ static uint32_t compressedsize;
 static uint32_t inputIndex = 4096; // Offset for the 4096 "negative" values
 static uint32_t outputIndex = 0;
 static TREETYPE rootIndex;
-static TREETYPE binaryTreeIndex = 0;
+static TREETYPE binaryTreeIndex = 4095;
 static TreeNode binaryTree[4096];
 static uint8_t *inputData;
 static uint8_t *outputData;
@@ -61,15 +61,18 @@ static void initializeBinaryTree() {
 */
 static uint32_t convertToOffset(TREETYPE treePointer) {
 	if (treePointer == binaryTreeIndex) {
-		return inputIndex + (uint32_t)binaryTreeIndex - 4096;
+		//             Base
+		return inputIndex - 1;
 		//return (inputIndex + binaryTreeIndex) - 4096;
 	}
 	if (treePointer > binaryTreeIndex) {
-		return inputIndex + (uint32_t)treePointer - (uint32_t)binaryTreeIndex - 4096;
+		//         Base                Amount to start       Amount to wrap
+		return (inputIndex - 1) - (binaryTreeIndex) - (4096 - treePointer);
 		//return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
 	}
 	else {
-		return (inputIndex - (uint32_t)binaryTreeIndex) + (uint32_t)treePointer;
+		//           Base                          Amount behing
+		return (inputIndex - 1) - (binaryTreeIndex - treePointer);
 		//return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
 	}
 }
@@ -80,6 +83,11 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 * Otherwise the difference between the first byte that's different is returned
 */
 static CompareResult compare(uint32_t index1, uint32_t index2) {
+	uint32_t trueIndex1 = index1 - 4096;
+	uint32_t trueIndex2 = index2 - 4096;
+	if (trueIndex1 == 0x1074) {
+		//puts("Comparing");
+	}
 	for (uint32_t i = 0; i < 18; i++) {
 		int result = inputData[index1 + i] - inputData[index2 + i];
 		if (result != 0) {
@@ -87,6 +95,39 @@ static CompareResult compare(uint32_t index1, uint32_t index2) {
 		}
 	}
 	return { 18, 0 };
+}
+
+static void checkTreeValidity2(TREETYPE root) {
+	TREETYPE leftChild = binaryTree[root].leftChild;
+	TREETYPE rightChild = binaryTree[root].rightChild;
+	CompareResult result;
+	if (leftChild != nullConstant) {
+		result = compare(convertToOffset(root), convertToOffset(leftChild));
+		if (result.value < 0) {
+			puts("Bad Tree");
+			result = compare(convertToOffset(root), convertToOffset(rightChild));
+		}
+		else {
+			checkTreeValidity2(leftChild);
+		}
+	}
+
+	if (rightChild != nullConstant) {
+		result = compare(convertToOffset(root), convertToOffset(rightChild));
+		if (result.value >= 0) {
+			puts("Bad Tree");
+			result = compare(convertToOffset(root), convertToOffset(rightChild));
+		}
+		else {
+			checkTreeValidity2(rightChild);
+		}
+	}
+
+}
+
+static void checkTreeValidity() {
+	TREETYPE root = rootIndex;
+	checkTreeValidity2(root);
 }
 
 static void printTreeRecurse(int curDepth, int depth, TREETYPE curIndex) {
@@ -132,6 +173,11 @@ static void printTree(int maxDepth, TREETYPE startIndex) {
 */
 static void calculateNode(TREETYPE index) {
 	TREETYPE curNodeIndex = rootIndex;
+
+	if (curNodeIndex == nullConstant) {
+		rootIndex = index;
+		binaryTree[index].parent = rootConstant;
+	}
 
 	// Traverse the tree til we find the new nodes perfect match...
 	while (1) {
@@ -204,7 +250,6 @@ static void calculateNode(TREETYPE index) {
 * Its parent/children will become the nullConstant
 */
 static void removeNode(TREETYPE index) {
-	TREETYPE parentIndex = binaryTree[index].parent;
 	// No children
 	if (binaryTree[index].leftChild == nullConstant && binaryTree[index].rightChild == nullConstant) {
 		// Make sure the node's parent doesn't point here anymore
@@ -218,7 +263,7 @@ static void removeNode(TREETYPE index) {
 			}
 		}
 		else {
-			//puts("There");
+			rootIndex = nullConstant;
 		}
 
 		// Set the node's parent to the nullConstant
@@ -251,7 +296,7 @@ static void removeNode(TREETYPE index) {
 		TREETYPE parentIndex = binaryTree[index].parent;
 		if (parentIndex != rootConstant) {
 			if (binaryTree[parentIndex].rightChild == index) {
-				binaryTree[parentIndex].rightChild = binaryTree[index].leftChild;
+				binaryTree[parentIndex].rightChild = binaryTree[index].leftChild;//
 			}
 			else {
 				binaryTree[parentIndex].leftChild = binaryTree[index].leftChild;
@@ -279,11 +324,11 @@ static void removeNode(TREETYPE index) {
 		// Detach the child from the bottom
 		if (binaryTree[childIndex].rightChild != nullConstant) {
 			if (binaryTree[childIndex].parent != index) {
-				binaryTree[binaryTree[childIndex].parent].leftChild = binaryTree[childIndex].rightChild;
+				binaryTree[binaryTree[childIndex].parent].leftChild = binaryTree[childIndex].rightChild;//
 				binaryTree[binaryTree[childIndex].rightChild].parent = binaryTree[childIndex].parent;
 			}
 			else {
-				binaryTree[index].rightChild = binaryTree[childIndex].rightChild;
+				binaryTree[index].rightChild = binaryTree[childIndex].rightChild;//
 			}
 		}
 		else {
@@ -301,10 +346,10 @@ static void removeNode(TREETYPE index) {
 		TREETYPE parentIndex = binaryTree[index].parent;
 		if (parentIndex != rootConstant) {
 			if (binaryTree[parentIndex].rightChild == index) {
-				binaryTree[parentIndex].rightChild = childIndex;
+				binaryTree[parentIndex].rightChild = childIndex;//
 			}
 			else {
-				binaryTree[parentIndex].leftChild = childIndex;
+				binaryTree[parentIndex].leftChild = childIndex;//
 			}
 		}
 		else {
@@ -318,7 +363,7 @@ static void removeNode(TREETYPE index) {
 
 		binaryTree[binaryTree[childIndex].leftChild].parent = childIndex;
 		if (binaryTree[childIndex].rightChild != nullConstant) {
-			binaryTree[binaryTree[childIndex].rightChild].parent = childIndex;
+			binaryTree[binaryTree[childIndex].rightChild].parent = childIndex;//
 		}
 
 		binaryTree[index].parent = nullConstant;
@@ -334,19 +379,23 @@ static void removeNode(TREETYPE index) {
 static void fixTree(uint32_t length) {
 
 	for (uint32_t i = 0; i < length; i++) {
-		if (binaryTree[binaryTreeIndex].parent != nullConstant) {
-			removeNode(binaryTreeIndex);
+		TREETYPE toRemove = binaryTreeIndex + 1u;
+		if (toRemove == 4096) {
+			toRemove = 0;
 		}
 
-		TREETYPE curIndex = binaryTreeIndex;
+		if (binaryTree[toRemove].parent != nullConstant) {
+			removeNode(toRemove);
+		}
+		checkTreeValidity();
+		//TREETYPE curIndex = binaryTreeIndex;
 
 		++inputIndex;
-		binaryTreeIndex++;
-		if (binaryTreeIndex == 4096) {
-			binaryTreeIndex = 0;
-		}
+		binaryTreeIndex = toRemove;
 
-		calculateNode(curIndex);
+		checkTreeValidity();
+		calculateNode(binaryTreeIndex);
+		checkTreeValidity();
 	}
 
 	inputIndex -= length;
@@ -361,11 +410,11 @@ static ReferenceBlock findMaxReference() {
 	TREETYPE treePointer = rootIndex;
 
 	//printTree(10, rootIndex);
-
+	checkTreeValidity();
 	while (treePointer != nullConstant) {
 		uint32_t fileOffset = convertToOffset(treePointer);
 		CompareResult result = compare(inputIndex, fileOffset);
-		if (result.length > maxReference.length) {
+		if (result.length > maxReference.length && inputIndex - fileOffset != 4096) {
 			maxReference.length = result.length;
 			maxReference.offset = fileOffset;
 		}
@@ -387,7 +436,7 @@ static ReferenceBlock findMaxReference() {
 	else {
 		fixTree(1);
 	}
-
+	
 	return maxReference;
 }
 
@@ -441,7 +490,7 @@ int compress(FILE *input, FILE *output) {
 
 	// Worst case scenario is 1/8 bigger thn inputData
 	// Make is 1/4 bigger anyways to be safe
-	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize >> 2))));
+	outputData = (uint8_t *)malloc((sizeof(uint8_t) * (filesize + (filesize)))); // TODO Change back to filesize >> 2
 	if (outputData == NULL) {
 		puts("Unable to allocate memory");
 		return -1;
@@ -460,8 +509,11 @@ int compress(FILE *input, FILE *output) {
 	outputIndex++;
 
 	while (inputIndex < paddedFilesize) {
+		if (inputIndex == 0x292D + 4096) {
+			//puts("There");
+		}
 		ReferenceBlock maxReference = findMaxReference();
-
+		
 		// If the reference is long enough to use
 		if (maxReference.length >= 3) {
 			// Calculate the reference
