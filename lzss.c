@@ -45,6 +45,7 @@ static TREETYPE binaryTreeIndex = 4095;
 static TreeNode binaryTree[4096];
 static uint8_t *inputData;
 static uint8_t *outputData;
+static int maxDepth = 0;
 
 /*
 * Initializes the Binary Search Tree to its initial state
@@ -102,7 +103,7 @@ static CompareResult compare(uint32_t index1, uint32_t index2) {
 * This version does not give the number of similar bytes
 */
 static int compareFast(uint32_t index1, uint32_t index2) {
-	for (uint32_t i = 0; i < 18; i++) {
+	for (uint32_t i = 0; i < 18; i += 2) {
 		uint16_t val1 = (inputData[index1 + i] << 8) | (inputData[index1 + i + 1]);
 		uint16_t val2 = (inputData[index2 + i] << 8) | (inputData[index2 + i + 1]);
 		int result = val1 - val2;
@@ -113,37 +114,42 @@ static int compareFast(uint32_t index1, uint32_t index2) {
 	return 0;
 }
 
-static void checkTreeValidity2(TREETYPE root) {
+static void checkTreeValidity2(TREETYPE root, int depth) {
 	TREETYPE leftChild = binaryTree[root].leftChild;
 	TREETYPE rightChild = binaryTree[root].rightChild;
-	CompareResult result;
+	int result;
 	if (leftChild != nullConstant) {
-		result = compare(convertToOffset(root), convertToOffset(leftChild));
-		if (result.value < 0) {
+		result = compareFast(convertToOffset(root), convertToOffset(leftChild));
+		if (result < 0) {
 			puts("Bad Tree");
-			result = compare(convertToOffset(root), convertToOffset(rightChild));
+			result = compareFast(convertToOffset(root), convertToOffset(rightChild));
 		}
 		else {
-			checkTreeValidity2(leftChild);
+			checkTreeValidity2(leftChild, depth + 1);
 		}
 	}
 
 	if (rightChild != nullConstant) {
-		result = compare(convertToOffset(root), convertToOffset(rightChild));
-		if (result.value >= 0) {
+		result = compareFast(convertToOffset(root), convertToOffset(rightChild));
+		if (result >= 0) {
 			puts("Bad Tree");
-			result = compare(convertToOffset(root), convertToOffset(rightChild));
+			result = compareFast(convertToOffset(root), convertToOffset(rightChild));
 		}
 		else {
-			checkTreeValidity2(rightChild);
+			checkTreeValidity2(rightChild, depth + 1);
 		}
 	}
+
+	if (rightChild == nullConstant && leftChild != nullConstant && depth > maxDepth && inputIndex > 15000) {
+		maxDepth = depth;
+	}
+
 
 }
 
 static void checkTreeValidity() {
 	TREETYPE root = rootIndex;
-	checkTreeValidity2(root);
+	checkTreeValidity2(root, 1);
 }
 
 /*

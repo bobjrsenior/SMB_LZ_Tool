@@ -8,6 +8,8 @@
 #include <string.h>
 #include <omp.h>
 
+#include "lzss.h"
+
 #define NUM_THREADS 2
 
 inline uint32_t readInt(FILE* file) {
@@ -50,9 +52,9 @@ typedef struct {
 
 void decompress(char* filename);
 
-void compress(char* filename);
+//void compress(char* filename);
 
-ReferenceBlock findMaxReference(const uint8_t* fileData, uint32_t filesize, uint32_t maxOffset);
+//ReferenceBlock findMaxReference(const uint8_t* fileData, uint32_t filesize, uint32_t maxOffset);
 
 int main(int argc, char* argv[]) {
 	if (argc <= 1) {
@@ -70,7 +72,7 @@ int main(int argc, char* argv[]) {
 				decompress(argv[i]);
 			}
 			else if (fileCheck == 'w') {
-				compress(argv[i]);
+				compressFile(argv[i]);
 			}
 			else {
 				printf("Unable to identify whether to compress or decompress file\nEnter 'D' to decompress, 'C' to compress, or any other character to skip\n");
@@ -79,7 +81,7 @@ int main(int argc, char* argv[]) {
 					decompress(argv[i]);
 				}
 				else if (answer == 'C' || answer == 'c') {
-					compress(argv[i]);
+					compressFile(argv[i]);
 				}
 				else {
 					continue;
@@ -214,6 +216,7 @@ void decompress(char* filename) {
 	return;
 }
 
+/*
 void compress(char* filename) {
 	// Try to open it
 	FILE* rawFile = fopen(filename, "rb");
@@ -368,27 +371,27 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 	}
 	maxOffsets[NUM_THREADS - 1] = maxOffset;
 
-	/*uint32_t kmpTable[19] = { 1 };
-	for (uint32_t i = 0; i < maxLength; i++) {
-		uint32_t skip = 1;
-		for (uint32_t j = i - 1; j < 0xFF; j--) {
-			if (data[maxOffset + i] == data[maxOffset + j]) {
-				int good = 1;
-				for (uint32_t k = 1; k <= j; k++) {
-					if (data[maxOffset + j - k] != data[maxOffset + i - k]) {
-						good = 0;
-						skip += kmpTable[j + 1 - k];
-						j -= kmpTable[j + 1 - k];
-						break;
-					}
-				}
-				if (good) break;
-				continue;
-			}
-			skip++;
-		}
-		kmpTable[i + 1] = skip;
-	}*/
+//	uint32_t kmpTable[19] = { 1 };
+//	for (uint32_t i = 0; i < maxLength; i++) {
+//		uint32_t skip = 1;
+//		for (uint32_t j = i - 1; j < 0xFF; j--) {
+//			if (data[maxOffset + i] == data[maxOffset + j]) {
+//				int good = 1;
+//				for (uint32_t k = 1; k <= j; k++) {
+//					if (data[maxOffset + j - k] != data[maxOffset + i - k]) {
+//						good = 0;
+//						skip += kmpTable[j + 1 - k];
+//						j -= kmpTable[j + 1 - k];
+//						break;
+//					}
+//				}
+//				if (good) break;
+//				continue;
+//			}
+//			skip++;
+//		}
+//		kmpTable[i + 1] = skip;
+//	}
 
 	int continueChecking = 1;
 
@@ -432,3 +435,4 @@ ReferenceBlock findMaxReference(const uint8_t* data, uint32_t filesize, uint32_t
 
 	return maxReference;
 }
+*/
