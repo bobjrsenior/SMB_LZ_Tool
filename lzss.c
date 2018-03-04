@@ -6,6 +6,14 @@
 
 #include "FunctionsAndDefines.h"
 
+#ifdef DEBUG
+#define VALIDATE_TREE checkTreeValidity()
+#elif _DEBUG
+#define VALIDATE_TREE checkTreeValidity()
+#else
+#define VALIDATE_TREE 
+#endif
+
 // Used for convienence in case a
 // different type is faster (ie uint16_t vs uint32_t)
 #define TREETYPE uint16_t
@@ -63,17 +71,14 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 	if (treePointer == binaryTreeIndex) {
 		//             Base
 		return inputIndex - 1;
-		//return (inputIndex + binaryTreeIndex) - 4096;
 	}
 	if (treePointer > binaryTreeIndex) {
 		//         Base                Amount to start       Amount to wrap
 		return (inputIndex - 1) - (binaryTreeIndex) - (4096 - treePointer);
-		//return (inputIndex + (treePointer - binaryTreeIndex)) - 4096;
 	}
 	else {
 		//           Base                          Amount behing
 		return (inputIndex - 1) - (binaryTreeIndex - treePointer);
-		//return (inputIndex + (4096 - binaryTreeIndex) + treePointer) - 4096;
 	}
 }
 
@@ -83,11 +88,6 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 * Otherwise the difference between the first byte that's different is returned
 */
 static CompareResult compare(uint32_t index1, uint32_t index2) {
-	uint32_t trueIndex1 = index1 - 4096;
-	uint32_t trueIndex2 = index2 - 4096;
-	if (trueIndex1 == 0x1074) {
-		//puts("Comparing");
-	}
 	for (uint32_t i = 0; i < 18; i++) {
 		int result = inputData[index1 + i] - inputData[index2 + i];
 		if (result != 0) {
@@ -128,44 +128,6 @@ static void checkTreeValidity2(TREETYPE root) {
 static void checkTreeValidity() {
 	TREETYPE root = rootIndex;
 	checkTreeValidity2(root);
-}
-
-static void printTreeRecurse(int curDepth, int depth, TREETYPE curIndex) {
-	if (curDepth == depth) {
-		if (binaryTree[curIndex].leftChild != nullConstant) {
-			printf("%d\t", convertToOffset(binaryTree[curIndex].leftChild) - 4096);
-		}
-		else {
-			putchar(' ');
-		}
-
-		if (binaryTree[curIndex].rightChild != nullConstant) {
-			printf("%d\t", convertToOffset(binaryTree[curIndex].rightChild) - 4096);
-		}
-		else {
-			putchar(' ');
-		}
-	}
-	else {
-		curDepth++;
-		if (binaryTree[curIndex].leftChild != nullConstant) {
-			printTreeRecurse(curDepth, depth, binaryTree[curIndex].leftChild);
-		}
-		if (binaryTree[curIndex].rightChild != nullConstant) {
-			printTreeRecurse(curDepth, depth, binaryTree[curIndex].rightChild);
-		}
-	}
-}
-
-static void printTree(int maxDepth, TREETYPE startIndex) {
-	int numTabs = (maxDepth * 4) >> 1;
-
-	printf("TREE:\n%d\n", convertToOffset(startIndex) - 4096);
-
-	for (int depth = 0; depth < maxDepth; depth++) {
-		printTreeRecurse(0, depth, startIndex);
-		putchar('\n');
-	}
 }
 
 /*
@@ -387,15 +349,14 @@ static void fixTree(uint32_t length) {
 		if (binaryTree[toRemove].parent != nullConstant) {
 			removeNode(toRemove);
 		}
-		checkTreeValidity();
-		//TREETYPE curIndex = binaryTreeIndex;
+		VALIDATE_TREE;
 
 		++inputIndex;
 		binaryTreeIndex = toRemove;
 
-		checkTreeValidity();
+		VALIDATE_TREE;
 		calculateNode(binaryTreeIndex);
-		checkTreeValidity();
+		VALIDATE_TREE;
 	}
 
 	inputIndex -= length;
@@ -409,8 +370,7 @@ static ReferenceBlock findMaxReference() {
 	ReferenceBlock maxReference = { 2, 0 };
 	TREETYPE treePointer = rootIndex;
 
-	//printTree(10, rootIndex);
-	checkTreeValidity();
+	VALIDATE_TREE;
 	while (treePointer != nullConstant) {
 		uint32_t fileOffset = convertToOffset(treePointer);
 		CompareResult result = compare(inputIndex, fileOffset);
