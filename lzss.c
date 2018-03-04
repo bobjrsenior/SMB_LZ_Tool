@@ -97,6 +97,22 @@ static CompareResult compare(uint32_t index1, uint32_t index2) {
 	return { 18, 0 };
 }
 
+/*
+* Compares two positions in the inputData for equality
+* This version does not give the number of similar bytes
+*/
+static int compareFast(uint32_t index1, uint32_t index2) {
+	for (uint32_t i = 0; i < 18; i++) {
+		uint16_t val1 = (inputData[index1 + i] << 8) | (inputData[index1 + i + 1]);
+		uint16_t val2 = (inputData[index2 + i] << 8) | (inputData[index2 + i + 1]);
+		int result = val1 - val2;
+		if (result != 0) {
+			return result;
+		}
+	}
+	return 0;
+}
+
 static void checkTreeValidity2(TREETYPE root) {
 	TREETYPE leftChild = binaryTree[root].leftChild;
 	TREETYPE rightChild = binaryTree[root].rightChild;
@@ -143,8 +159,8 @@ static void calculateNode(TREETYPE index) {
 
 	// Traverse the tree til we find the new nodes perfect match...
 	while (1) {
-		CompareResult result = compare(convertToOffset(index), convertToOffset(curNodeIndex));
-		if (result.value == 0) {
+		int result = compareFast(convertToOffset(index), convertToOffset(curNodeIndex));
+		if (result == 0) {
 			// Set the new node's parent/children to the stale version's parent/children
 			binaryTree[index].parent = binaryTree[curNodeIndex].parent;
 			binaryTree[index].leftChild = binaryTree[curNodeIndex].leftChild;
@@ -174,7 +190,7 @@ static void calculateNode(TREETYPE index) {
 
 			break;
 		}
-		else if (result.value > 0) {
+		else if (result > 0) {
 			// If we reached a leaf. Insert the node here
 			if (binaryTree[curNodeIndex].rightChild == nullConstant) {
 				binaryTree[curNodeIndex].rightChild = index;
