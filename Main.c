@@ -8,38 +8,7 @@
 #include <string.h>
 
 #include "lzss.h"
-
-inline uint32_t readInt(FILE* file) {
-	uint32_t c1 = (uint32_t)(getc(file));
-	uint32_t c2 = (uint32_t)(getc(file) << 8);
-	uint32_t c3 = (uint32_t)(getc(file) << 16);
-	uint32_t c4 = (uint32_t)(getc(file) << 24);
-	return (c1 | c2 | c3 | c4);
-}
-
-inline uint16_t readShort(FILE* file) {
-	uint32_t c1 = (uint32_t)(getc(file) << 8);
-	uint32_t c2 = (uint32_t)(getc(file));
-	return (uint16_t)(c1 | c2);
-}
-
-inline uint32_t readIntData(char* data, int offset) {
-	return (uint32_t)((data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) + (data[offset + 3]));
-}
-
-inline void writeLittleIntData(uint8_t* data, int offset, uint32_t num) {
-	data[offset] = (uint8_t)(num);
-	data[offset + 1] = (uint8_t)(num >> 8);
-	data[offset + 2] = (uint8_t)(num >> 16);
-	data[offset + 3] = (uint8_t)(num >> 24);
-}
-
-inline void writeLittleInt(FILE* file, uint32_t num) {
-	putc((uint8_t)(num), file);
-	putc((uint8_t)(num >> 8), file);
-	putc((uint8_t)(num >> 16), file);
-	putc((uint8_t)(num >> 24), file);
-}
+#include "FunctionsAndDefines.h"
 
 typedef struct {
 	uint32_t length;
@@ -102,9 +71,9 @@ void decompress(char* filename) {
 	FILE* normal = tmpfile();
 
 	// Unfix the header (Turn it back into normal FF7 LZSS)
-	int csize = (int)readInt(lz) - 8;
+	int csize = (int)readLittleInt(lz) - 8;
 	// Filesize of the uncompressed data
-	int dataSize = (int)readInt(lz);
+	int dataSize = (int)readLittleInt(lz);
 	putc(csize & 0xFF, normal);
 	putc((csize >> 8) & 0xFF, normal);
 	putc((csize >> 16) & 0xFF, normal);
@@ -130,7 +99,7 @@ void decompress(char* filename) {
 	}
 
 	// The size the the lzss data + 4 bytes for the header
-	uint32_t filesize = readInt(normal) + 4;
+	uint32_t filesize = readLittleInt(normal) + 4;
 
 	char * memBlock = (char*)malloc(sizeof(char) * (dataSize));
 	int memPosition = 0;
@@ -152,7 +121,7 @@ void decompress(char* filename) {
 				++memPosition;
 			}// Reference
 			else {
-				uint16_t reference = readShort(normal);
+				uint16_t reference = readBigShort(normal);
 
 				// Length is the last four bits + 3
 				// Any less than a lengh of 3 i pointess since a reference takes up 3 bytes
