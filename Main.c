@@ -6,11 +6,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <omp.h>
 
 #include "lzss.h"
-
-#define NUM_THREADS 2
 
 inline uint32_t readInt(FILE* file) {
 	uint32_t c1 = (uint32_t)(getc(file));
@@ -61,7 +58,7 @@ int main(int argc, char* argv[]) {
 		printf("Add lz paths as command line params");
 	}
 
-	omp_set_num_threads(NUM_THREADS);
+	//omp_set_num_threads(NUM_THREADS);
 
 	// Go through every command line arg
 	for (int i = 1; i < argc; ++i) {
