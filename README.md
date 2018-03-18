@@ -3,6 +3,8 @@ An implementation to the SMB FF7 LZSS compression algorithm.
 
 F-Zero GX also uses this algorithm. I just used SMB in the name because that's what I created it for.
 
+The Visual Studio compiler and GCC 6.4 are currently supported. GCC 7.3 has a known issue that needs to be looked into.
+
 ## Support
 Only decompression is currently supported
 
