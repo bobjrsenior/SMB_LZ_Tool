@@ -89,13 +89,18 @@ static uint32_t convertToOffset(TREETYPE treePointer) {
 * Otherwise the difference between the first byte that's different is returned
 */
 static CompareResult compare(uint32_t index1, uint32_t index2) {
+	CompareResult compareResult;
 	for (uint32_t i = 0; i < 18; i++) {
 		int result = inputData[index1 + i] - inputData[index2 + i];
 		if (result != 0) {
-			return { i, result };
+			compareResult.length = i;
+			compareResult.value = result;
+			return compareResult;
 		}
 	}
-	return { 18, 0 };
+	compareResult.length = 18;
+	compareResult.value = 0;
+	return compareResult;
 }
 
 /*
